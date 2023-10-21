@@ -35,7 +35,9 @@ run: $(NAME)
 		echo "#SBATCH --cpus-per-task=1" >> launcher.sh; \
 		echo "## to specify the number of tasks to be invoked on each node" >> launcher.sh; \
 		echo "#SBATCH --ntasks-per-node=1" >> launcher.sh; \
-		echo "" >> launcher.sh; \
+		echo "## to specify the file of utput and error" >> launcher.sh; \
+		echo "#SBATCH --o ./%x.%j.out" >> launcher.sh; \
+		echo "#SBATCH --e ./%x.%j.err" >> launcher.sh; \
 		echo "" >> launcher.sh; \
 		echo "mpirun distributed_computation" >> launcher.sh; \
 		chmod +x launcher.sh; \
