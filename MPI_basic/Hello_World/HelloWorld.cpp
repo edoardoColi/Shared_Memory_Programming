@@ -1,5 +1,5 @@
 #include <mpi.h>
-#include <stdio.h>
+#include <iostream>
 
 int main(int argc, char* argv[])
 {
@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
     int name_len;
     MPI_Get_processor_name(processor_name, &name_len);   //Get the name of the processor
 
-    printf("Hello world from '%s' (rank %d out of %d process)\n", processor_name, world_rank+1, world_size);
+    std::cout << "Hello World from '" << processor_name << "'(lenght:" << name_len << ") (rank " << world_rank+1 << " out of " << world_size << " process)" << std::endl;
     MPI_Finalize(); //Clean up the MPI environment
     return 0;
 }

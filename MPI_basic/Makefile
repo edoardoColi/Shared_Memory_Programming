@@ -1,19 +1,21 @@
-# Program for compiling MPI programs
-CC		= mpicc
+# Program for compiling MPI cpp programs
+CC		= mpicxx
+CXX		= mpicxx
 # Extra flags to give to the processor compiler
 CFLAGS	= -g
 #  -Wall -Werror -Wextra
 
 #
-SRC		= $(wildcard *.c)
-OBJ		= $(SRC:.c=.o)
+SRC		= $(wildcard *.cpp)
+OBJ		= $(SRC:.cpp=.o)
 NAME	= distributed_computation
 
 # SBATCH parameters
 JOBNAME	= Distributed_Sorting
+PARTITION = production
 TIME = 12:00:00
 MEM = 3G
-NODELIST = steffe[1-20]
+NODELIST = steffe[1-10]
 CPUS_PER_TASK = 1
 NTASKS_PER_NODE = 1
 OUTPUT = ./%x.%j.out
@@ -22,7 +24,7 @@ ERROR = ./e%x.%j.err
 #
 .PHONY: all run detail clean fclean re
 
-.o: .c
+.o: .cpp
 	$(CC) -c $(CFLAGS) $< -o $@
 
 all: $(NAME)
@@ -31,13 +33,16 @@ $(NAME): $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^
 
 run: $(NAME)
-## Se modifico il Makefile cosi rimodifica anche il launcher.sh
+## Se modifico il Makefile con i parametri di sbatch ricreo anche il launcher.sh
 #	@if ! [ -f launcher.sh ]; then \
 
 		@echo "#!/bin/bash" >  launcher.sh; \
-		echo "" >> launcher.sh; \
 		echo "## sbatch is the command line interpreter for Slurm" >> launcher.sh; \
+		echo "" >> launcher.sh; \
+		echo "## specify the name of the job in the queueing system" >> launcher.sh; \
 		echo "#SBATCH --job-name=$(JOBNAME)" >> launcher.sh; \
+		echo "## specify the partition for the resource allocation. if not specified, slurm is allowed to take the default(the one with a star *)" >> launcher.sh; \
+		echo "#SBATCH --partition=$(PARTITION)" >> launcher.sh; \
 		echo "## format for time is days-hours:minutes:seconds, is used as time limit for the execution duration" >> launcher.sh; \
 		echo "#SBATCH --time=$(TIME)" >> launcher.sh; \
 		echo "## specify the real memory required per node. suffix can be K-M-G-T but if not present is MegaBytes by default" >> launcher.sh; \
@@ -64,11 +69,11 @@ run: $(NAME)
 	@echo "  To cancel a job you can use 'scancel jobid'."
 	
 detail:
-	@echo "Compiler flags and options that mpicc would use for compiling an MPI program: "
-	@mpicc --showme:compile
+	@echo "Compiler flags and options that mpicxx would use for compiling an MPI program: "
+	@mpicxx --showme:compile
 	@echo
-	@echo "Linker flags and options that mpicc would use for linking an MPI program: "
-	@mpicc --showme:link
+	@echo "Linker flags and options that mpicxx would use for linking an MPI program: "
+	@mpicxx --showme:link
 
 clean:
 ## Sembra non funzionare read
@@ -97,7 +102,7 @@ re: fclean all
 
 
 
-# mpicc *.c
+# mpicxx *.c
 
 # mpirun/mpiexec ...	//will run X copies of the program in the current run-time environment, scheduling(by default) in a round-robin fashion by CPU slot.
 
