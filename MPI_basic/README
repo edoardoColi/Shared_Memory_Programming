@@ -4,7 +4,7 @@ Information about che cluster and partitions could be obtained doing:
  sinfo
  scontrol show partition
 
-With srun we cen reserve a subser of the resources of the compute nodes for out tasks:
+With srun we cen reserve a subset of the resources of the compute nodes for out tasks:
 More parameters are provided in the documentation.
  srun --partition=production --time=00:30:00 --nodes=1 --pty bash -i
  (take for half hour 1 node from the production partition and launch the command 'bash -i')
@@ -25,4 +25,4 @@ To see the queue of jobs in the system we can run
  squeue --long
 
 To remove a job from the queue we can run
- scncel <job/process_id>
+ scancel <job/process_id>

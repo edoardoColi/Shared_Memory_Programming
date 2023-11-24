@@ -8,7 +8,7 @@ CFLAGS	= -g
 #
 SRC		= $(wildcard *.cpp)
 OBJ		= $(SRC:.cpp=.o)
-NAME	= distributed_computation
+NAME	= test_computation
 
 # SBATCH parameters
 JOBNAME	= Distributed_Sorting
@@ -57,7 +57,7 @@ run: $(NAME)
 		echo "#SBATCH --output $(OUTPUT)" >> launcher.sh; \
 		echo "#SBATCH --error $(ERROR)" >> launcher.sh; \
 		echo "" >> launcher.sh; \
-		echo "mpirun distributed_computation" >> launcher.sh; \
+		echo "mpirun $(NAME)" >> launcher.sh; \
 		chmod +x launcher.sh; \
 		echo "The 'launcher.sh' script has been created and is ready to run."; \
 
