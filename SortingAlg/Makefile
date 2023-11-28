@@ -15,7 +15,7 @@ JOBNAME	= Distributed_Sorting
 PARTITION = production
 TIME = 12:00:00
 MEM = 3G
-NODELIST = steffe[1-5]
+NODELIST = steffe[1-3]
 CPUS_PER_TASK = 1
 NTASKS_PER_NODE = 1
 OUTPUT = ./%x.%j.out
@@ -57,7 +57,7 @@ run: $(NAME)
 		echo "#SBATCH --output $(OUTPUT)" >> launcher.sh; \
 		echo "#SBATCH --error $(ERROR)" >> launcher.sh; \
 		echo "" >> launcher.sh; \
-		echo "mpirun $(NAME)" >> launcher.sh; \
+		echo "mpirun $(NAME) $(ARGS)" >> launcher.sh; \
 		chmod +x launcher.sh; \
 		echo "The 'launcher.sh' script has been created and is ready to run."; \
 
@@ -96,6 +96,7 @@ fclean: clean
 	@if [ -f launcher.sh ]; then \
 		rm -i ./launcher.sh; \
 	fi
+	rm -f /mnt/raid/tmp/SortedRun_*
 	rm -f $(NAME)
 
 re: fclean all
