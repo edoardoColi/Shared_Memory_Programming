@@ -15,7 +15,7 @@ JOBNAME	= Distributed_Sorting
 PARTITION = production
 TIME = 12:00:00
 MEM = 3G
-NODELIST = steffe[1-3]
+NODELIST = steffe[12-14]
 CPUS_PER_TASK = 1
 NTASKS_PER_NODE = 1
 OUTPUT = ./%x.%j.out
@@ -93,10 +93,10 @@ clean:
 	rm -f *~ $(OBJ)
 
 fclean: clean
-	@if [ -f launcher.sh ]; then \
-		rm -i ./launcher.sh; \
-	fi
-	rm -f /mnt/raid/tmp/SortedRun_*
+	rm -f ./launcher.sh;
+	rm -f ./nohup.out
+	rm -f /mnt/raid/tmp/SortedRun*
+	rm -f /mnt/raid/tmp/*.sort
 	rm -f $(NAME)
 
 re: fclean all
