@@ -67,7 +67,7 @@ run: $(NAME)
 	@echo; sbatch launcher.sh
 	@echo "  To see job list you can use 'squeue'."
 	@echo "  To cancel a job you can use 'scancel jobid'."
-	
+
 detail:
 	@echo "Compiler flags and options that mpicxx would use for compiling an MPI program: "
 	@mpicxx --showme:compile
@@ -99,21 +99,3 @@ fclean: clean
 	rm -f $(NAME)
 
 re: fclean all
-
-
-
-# mpicxx *.c
-
-# mpirun/mpiexec ...	//will run X copies of the program in the current run-time environment, scheduling(by default) in a round-robin fashion by CPU slot.
-
-# SLIDE 5 Durastante
-# The Script
-# #!/bin/bash
-# #SBATCH --job-name=dascegliere
-# #SBATCH --mem=size[unis]
-# #SBATCH -n 10
-# #SBATCH --time=12:00:00
-# #SBATCH --nodelist=lista
-# #SBATCH --partition=ports
-# #ecc..
-# mpirun ...

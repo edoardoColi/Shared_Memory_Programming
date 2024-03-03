@@ -2,27 +2,33 @@
 CC		= mpicxx
 CXX		= mpicxx
 # Extra flags to give to the processor compiler
-CFLAGS	= -g
-#TODO  -Wall -Werror -Wextra
+CFLAGS	= -g -Wall -Werror -Wextra -O3
 
 #
 SRC		= main.cpp
 OBJ		= $(SRC:.cpp=.o)
-NAME	= merge_sort_enhanced
+NAME	= sort_big_file
+
+# Check if NODES variable is defined
+ifeq ($(filter run, $(MAKECMDGOALS)), run)
+ifndef NODES
+$(error NODES is not defined. Please define NODES before running the target (make run NODES="1-5"))
+endif
+endif
 
 # SBATCH parameters
 JOBNAME	= Distributed_Sorting
 PARTITION = production
 TIME = 12:00:00
 MEM = 3G
-NODELIST = steffe[12-14]
+NODELIST = steffe[$(NODES)]
 CPUS_PER_TASK = 1
 NTASKS_PER_NODE = 1
 OUTPUT = ./%x.%j.out
 ERROR = ./e%x.%j.err
 
 #
-.PHONY: all run detail clean fclean re
+.PHONY: all run detail clean fclean cleanall re
 
 .o: .cpp
 	$(CC) -c $(CFLAGS) $< -o $@
@@ -33,41 +39,40 @@ $(NAME): $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^
 
 run: $(NAME)
-## Se modifico il Makefile con i parametri di sbatch ricreo anche il launcher.sh
-#	@if ! [ -f launcher.sh ]; then \
+	@echo "#!/bin/bash" >  launcher.sh; \
+	echo "## sbatch is the command line interpreter for Slurm" >> launcher.sh; \
+	echo "" >> launcher.sh; \
+	echo "## specify the name of the job in the queueing system" >> launcher.sh; \
+	echo "#SBATCH --job-name=$(JOBNAME)" >> launcher.sh; \
+	echo "## specify the partition for the resource allocation. if not specified, slurm is allowed to take the default(the one with a star *)" >> launcher.sh; \
+	echo "#SBATCH --partition=$(PARTITION)" >> launcher.sh; \
+	echo "## format for time is days-hours:minutes:seconds, is used as time limit for the execution duration" >> launcher.sh; \
+	echo "#SBATCH --time=$(TIME)" >> launcher.sh; \
+	echo "## specify the real memory required per node. suffix can be K-M-G-T but if not present is MegaBytes by default" >> launcher.sh; \
+	echo "#SBATCH --mem=$(MEM)" >> launcher.sh; \
+	echo "## format for hosts as a range(steffe[1-4,10-15,20]), to specify hosts needed to satisfy resource requirements" >> launcher.sh; \
+	echo "#SBATCH --nodelist=$(NODELIST)" >> launcher.sh; \
+	echo "## to specify the number of processors per task, default is one" >> launcher.sh; \
+	echo "#SBATCH --cpus-per-task=$(CPUS_PER_TASK)" >> launcher.sh; \
+	echo "## to specify the number of tasks to be invoked on each node" >> launcher.sh; \
+	echo "#SBATCH --ntasks-per-node=$(NTASKS_PER_NODE)" >> launcher.sh; \
+	echo "## to specify the file of utput and error" >> launcher.sh; \
+	echo "#SBATCH --output $(OUTPUT)" >> launcher.sh; \
+	echo "#SBATCH --error $(ERROR)" >> launcher.sh; \
+	echo "" >> launcher.sh; \
+	echo "mpirun $(NAME) $(ARGS)" >> launcher.sh; \
+	chmod +x launcher.sh; \
+	echo "The 'launcher.sh' script has been created and is ready to run."; \
 
-		@echo "#!/bin/bash" >  launcher.sh; \
-		echo "## sbatch is the command line interpreter for Slurm" >> launcher.sh; \
-		echo "" >> launcher.sh; \
-		echo "## specify the name of the job in the queueing system" >> launcher.sh; \
-		echo "#SBATCH --job-name=$(JOBNAME)" >> launcher.sh; \
-		echo "## specify the partition for the resource allocation. if not specified, slurm is allowed to take the default(the one with a star *)" >> launcher.sh; \
-		echo "#SBATCH --partition=$(PARTITION)" >> launcher.sh; \
-		echo "## format for time is days-hours:minutes:seconds, is used as time limit for the execution duration" >> launcher.sh; \
-		echo "#SBATCH --time=$(TIME)" >> launcher.sh; \
-		echo "## specify the real memory required per node. suffix can be K-M-G-T but if not present is MegaBytes by default" >> launcher.sh; \
-		echo "#SBATCH --mem=$(MEM)" >> launcher.sh; \
-		echo "## format for hosts as a range(steffe[1-4,10-15,20]), to specify hosts needed to satisfy resource requirements" >> launcher.sh; \
-		echo "#SBATCH --nodelist=$(NODELIST)" >> launcher.sh; \
-		echo "## to specify the number of processors per task, default is one" >> launcher.sh; \
-		echo "#SBATCH --cpus-per-task=$(CPUS_PER_TASK)" >> launcher.sh; \
-		echo "## to specify the number of tasks to be invoked on each node" >> launcher.sh; \
-		echo "#SBATCH --ntasks-per-node=$(NTASKS_PER_NODE)" >> launcher.sh; \
-		echo "## to specify the file of utput and error" >> launcher.sh; \
-		echo "#SBATCH --output $(OUTPUT)" >> launcher.sh; \
-		echo "#SBATCH --error $(ERROR)" >> launcher.sh; \
-		echo "" >> launcher.sh; \
-		echo "mpirun $(NAME) $(ARGS)" >> launcher.sh; \
-		chmod +x launcher.sh; \
-		echo "The 'launcher.sh' script has been created and is ready to run."; \
-
-#	else \
-#		chmod +x launcher.sh; \
-#	fi
 	@echo; sbatch launcher.sh
 	@echo "  To see job list you can use 'squeue'."
 	@echo "  To cancel a job you can use 'scancel jobid'."
-	
+	@echo
+	@echo "  To visualize binary files in bash can be used:"
+	@echo "   od -t d8 -A n binaryfile.bin                    #For in use format"
+	@echo "   od -t d8 -A n --endian=little binaryfile.bin    #For little-endian format"
+	@echo "   od -t d8 -A n --endian=big binaryfile.bin       #For big-endian format"
+
 detail:
 	@echo "Compiler flags and options that mpicxx would use for compiling an MPI program: "
 	@mpicxx --showme:compile
@@ -76,45 +81,23 @@ detail:
 	@mpicxx --showme:link
 
 clean:
-## Sembra non funzionare read
-#	read -p "rm: remove all files \"./$(JOBNAME).*.out\" and \"./e$(JOBNAME).*.err\"? (y/n)" choice
-#	@if [ "$$choice" = "y" ]; then \
-
-		@echo rm -f ./$(JOBNAME).*.out
-		@for file in ./$(JOBNAME).*.out; do \
-			rm -f "$$file"; \
-		done
-		@echo rm -f ./e$(JOBNAME).*.err
-		@for file in ./e$(JOBNAME).*.err; do \
-			rm -f "$$file"; \
-		done
-
-#	fi
+	@echo rm -f ./e$(JOBNAME).*.err
+	@for file in ./e$(JOBNAME).*.err; do \
+		rm -f "$$file"; \
+	done
 	rm -f *~ $(OBJ)
 
-fclean: clean
+fclean:
 	rm -f ./launcher.sh;
 	rm -f ./nohup.out
 	rm -f /mnt/raid/tmp/SortedRun*
-	rm -f /mnt/raid/tmp/*.sort
 	rm -f $(NAME)
 
+cleanall: fclean clean
+	@echo rm -f ./$(JOBNAME).*.out
+	@for file in ./$(JOBNAME).*.out; do \
+		rm -f "$$file"; \
+	done
+	rm -f /mnt/raid/tmp/*.sort
+
 re: fclean all
-
-
-
-# mpicxx *.c
-
-# mpirun/mpiexec ...	//will run X copies of the program in the current run-time environment, scheduling(by default) in a round-robin fashion by CPU slot.
-
-# SLIDE 5 Durastante
-# The Script
-# #!/bin/bash
-# #SBATCH --job-name=dascegliere
-# #SBATCH --mem=size[unis]
-# #SBATCH -n 10
-# #SBATCH --time=12:00:00
-# #SBATCH --nodelist=lista
-# #SBATCH --partition=ports
-# #ecc..
-# mpirun ...
