@@ -5,10 +5,12 @@
 #include <iostream>
 #include <vector>
 #include <thread>
+#include <barrier>
 #include <random>
 #include <cassert>
 #include <algorithm>        // for std::max
 #include <hpc_helpers.hpp>  // for TIMER* macro
+#include <threadPool.hpp>  // for ThreadPool implementation
 
 int random(const int &min, const int &max) {
     static std::mt19937 generator(117);
@@ -31,25 +33,41 @@ void usage(char* name) {
     std::printf("    t threads spawned\n");
 }
 
-void wavefront(const std::vector<int> &M, const uint64_t &N, const uint64_t &t) {
+void blockWavefront(const std::vector<int> &M, const uint64_t &N, const uint64_t &diag, const uint64_t &from, const uint64_t &to) {
+    uint64_t d = diag;
+    uint64_t f = from;
+    uint64_t t = to > (N-d)? N-d : to;
 
-    std::vector<std::thread> threads;
-
-    for(uint64_t k = 0; k< N; ++k) {                // For each upper diagonal
-        for(uint64_t i = 0; i< (N-k); ++i) {        // For each element in the diagonal
-            threads.emplace_back(work, std::chrono::microseconds(M[i*N+(i+k)]));    // Call work with argument the microseconds to wait
-            // work(std::chrono::microseconds(M[i*N+(i+k)])); 
-        }
+    std::cout << "Blocco di lavoro" << std::endl;
+    for(uint64_t i = f; i < t; ++i) {        // For each element in the block of the scoped diagonal
+        work(std::chrono::microseconds(M[i*N+(i+d)]));
     }
+}
 
-    for (auto& thread: threads)
-        thread.join();
+void parallelWavefront(const std::vector<int> &M, const uint64_t &N, const uint64_t &t) {
+
+    ThreadPool TP(t);
+    uint64_t blockSize = 1; //TODO magari mettere una dimenzione condizionata. non m/p perche senno perdo in prestazioni in caso di workload non bilanciati
+
+    for(uint64_t k = 0; k < N; ++k) {                // For each upper diagonal
+        
+        // std::barrier bar(t);                          //TODO dovrebbero essere t spawnti piu il corrente
+        
+        for(uint64_t i = 0; i < (N-k); i += blockSize) {        // For each element in the diagonal
+            // TP.enqueue(blockWavefront, M, N, k, i, i + blockSize);
+            blockWavefront(M, N, k, i, i + blockSize);
+        }
+        // std::cout << "Thread MAIN waiting for barrier" << std::endl;
+        // bar.arrive_and_wait();
+        // std::cout << "Thread MAIN crossed for barrier" << std::endl;
+        std::cout << "Barrier Cambio diagonale ------------" << std::endl;  //TODO madari da bettere come esecuzione in barrier
+    }
 }
 
 int main(int argc, char *argv[]) {
     int min    = 0;                                 // Default minimum time (in microseconds)
     int max    = 1000;                              // Default maximum time (in microseconds)
-    uint64_t t = 4;                                 // Default maximum threads
+    uint64_t t = std::thread::hardware_concurrency();   // Default maximum threads
     uint64_t N = 512;                               // Default size of the matrix (NxN)
 
     if (argc != 1 && argc != 2 && argc != 4 && argc != 5) {
@@ -90,8 +108,8 @@ int main(int argc, char *argv[]) {
         }
     };
     init();
-    std::printf("Expected Sequential compute time   (p:1 s:1) ~ %f (ms)\n", expected_sequentialtime/1000.0);
-    std::printf("Minimum Parallel compute time    (p:inf s:1) ~ %f (ms)\n", minimum_paralleltime/1000.0);
+    std::printf("Expected Sequential compute time   (p:1 s:1) ~ %f (s)\n", expected_sequentialtime/1000000.0);
+    std::printf("Minimum Parallel compute time    (p:inf s:1) ~ %f (s)\n", minimum_paralleltime/1000000.0);
     #if 1
         for(uint64_t i=0;i<N;++i){
             for(uint64_t j=0; j<N;++j){
@@ -102,7 +120,7 @@ int main(int argc, char *argv[]) {
     #endif
 
     TIMERSTART(wavefront);
-    wavefront(M, N, t);
+    parallelWavefront(M, N, t);
     TIMERSTOP(wavefront);
 
     return 0;
