@@ -28,11 +28,6 @@ void usage(char* name) {
     std::printf("    max waiting time (us)\n");
 }
 
-void testSleep() {
-    std::cout << "Blocco di lavoro - TEST" << std::endl;
-    std::this_thread::sleep_for(std::chrono::seconds(5)); // Sleep for 5 seconds
-}
-
 // Emulate some work, just "waste of time"
 void work(std::chrono::microseconds w) {
 
@@ -47,7 +42,7 @@ void blockWavefront(const std::vector<int> &M, const uint64_t &N, const uint64_t
     uint64_t f = from;
     uint64_t t = to > (N-d)? N-d : to;
 
-    std::cout << "Blocco di lavoro" << std::endl;
+    std::cout << "Blocco di lavoro con " << d << "-" << f << "-" << t << "" << std::endl;
 
     for(uint64_t i = f; i < t; ++i) {        // For each element in the block of the scoped diagonal
         work(std::chrono::microseconds(M[i*N+(i+d)]));
@@ -56,27 +51,19 @@ void blockWavefront(const std::vector<int> &M, const uint64_t &N, const uint64_t
 
 void parallelWavefront(const std::vector<int> &M, const uint64_t &N, const uint64_t &t) {
 
-    ThreadPool TP(t);
     uint64_t blockSize = 1; //TODO magari mettere una dimenzione condizionata. non m/p perche senno perdo in prestazioni in caso di workload non bilanciati
 
     for(uint64_t k = 0; k < N; ++k) {                // For each upper diagonal
 
-        std::cout << "Aspetto " << N-k << " +1 del main" << std::endl;
-        std::barrier bar(N-k+1);                          //TODO dovrebbero essere t spawnti piu il corrente
-
-        for(uint64_t i = 0; i < (N-k); i += blockSize) {        // For each element in the diagonal
-
-            TP.enqueue([&] { 
-                testSleep();
-                // blockWavefront(M, N, k, i, i + blockSize);
-                bar.arrive_and_wait();
-            });
-            // TP.enqueue(blockWavefront, M, N, k, i, i + blockSize);
-            // blockWavefront(M, N, k, i, i + blockSize);
+        ThreadPool TP(t);
+    
+        for(uint64_t i = 0; i < (N-k); i += blockSize) {            // For each element in the diagonal
+            TP.enqueue(blockWavefront, M, N, k, i, i + blockSize);  // Parallel execution
+            // blockWavefront(M, N, k, i, i + blockSize);           // Sequential execution
         }
-        std::cout << "Thread MAIN waiting for barrier" << std::endl;
-        bar.arrive_and_wait();
-        std::cout << "Thread MAIN crossed for barrier" << std::endl;
+
+        TP.wait_and_stop();
+        std::cout << "Diagonal Barrier ------------------------" << std::endl;
     }
 }
 
@@ -128,7 +115,7 @@ int main(int argc, char *argv[]) {
     init();
     std::printf("Expected Sequential compute time   (p:1 s:1) ~ %f (s)\n", expected_sequentialtime/1000000.0);
     std::printf("Minimum Parallel compute time    (p:inf s:1) ~ %f (s)\n", minimum_paralleltime/1000000.0);
-    #if 1
+    #if 0
         for(uint64_t i=0;i<N;++i){
             for(uint64_t j=0; j<N;++j){
                 std::printf("%4d ",M[i*N+j]);

@@ -174,7 +174,7 @@ public:
             func(args...);
     }
 
-    void wait_and_stop() {        
+    void wait_and_stop() {
         // wait for pool being set to stop
         std::unique_lock<std::mutex> unique_lock(mutex);
         
