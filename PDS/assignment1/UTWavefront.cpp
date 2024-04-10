@@ -5,12 +5,39 @@
 #include <iostream>
 #include <vector>
 #include <thread>
-#include <barrier>
+// #include <barrier>
+#include <mutex>
+#include <condition_variable>
 #include <random>
 #include <cassert>
 #include <algorithm>        // for std::max
 #include <hpc_helpers.hpp>  // for TIMER* macro
 #include <threadPool.hpp>  // for ThreadPool implementation
+
+class myBarrier {
+public:
+    explicit myBarrier(std::size_t count) : count_(count), waiting_(0), generation_(0) {}
+
+    void wait() {
+        std::unique_lock<std::mutex> lock(mutex_);
+        std::size_t gen = generation_;
+
+        if (++waiting_ == count_) {
+            waiting_ = 0;
+            ++generation_;
+            cv_.notify_all();
+        } else {
+            cv_.wait(lock, [this, gen] { return gen != generation_; });
+        }
+    }
+
+private:
+    std::mutex mutex_;
+    std::condition_variable cv_;
+    std::size_t count_;
+    std::size_t waiting_;
+    std::size_t generation_;
+};
 
 int random(const int &min, const int &max) {
     static std::mt19937 generator(117);
@@ -18,19 +45,26 @@ int random(const int &min, const int &max) {
     return distribution(generator);
 };
 
-// Emulate some work, just "waste of time"
-void work(std::chrono::microseconds w) {
-    std::cout << "I have " << w.count() << std::endl;
-    auto end = std::chrono::steady_clock::now() + w;
-    while(std::chrono::steady_clock::now() < end);  // Active waste
-}
-
 void usage(char* name) {
-    std::printf("use: %s N [min max] t\n", name);
+    std::printf("use: %s N t [min max]\n", name);
     std::printf("    N size of the square matrix\n");
+    std::printf("    t threads spawned\n");
     std::printf("    min waiting time (us)\n");
     std::printf("    max waiting time (us)\n");
-    std::printf("    t threads spawned\n");
+}
+
+void testSleep() {
+    std::cout << "Blocco di lavoro - TEST" << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(10)); // Sleep for 5 seconds
+}
+
+// Emulate some work, just "waste of time"
+void work(std::chrono::microseconds w) {
+
+    std::cout << "I have " << w.count() << std::endl;
+    
+    auto end = std::chrono::steady_clock::now() + w;
+    while(std::chrono::steady_clock::now() < end);  // Active waste
 }
 
 void blockWavefront(const std::vector<int> &M, const uint64_t &N, const uint64_t &diag, const uint64_t &from, const uint64_t &to) {
@@ -51,16 +85,22 @@ void parallelWavefront(const std::vector<int> &M, const uint64_t &N, const uint6
 
     for(uint64_t k = 0; k < N; ++k) {                // For each upper diagonal
         
-        // std::barrier bar(t);                          //TODO dovrebbero essere t spawnti piu il corrente
-        
+        myBarrier bar(N-k+1);                          //TODO dovrebbero essere t spawnti piu il corrente
+
         for(uint64_t i = 0; i < (N-k); i += blockSize) {        // For each element in the diagonal
+
+            TP.enqueue([&] { 
+                testSleep();
+            });
+                bar.wait();
+
             // TP.enqueue(blockWavefront, M, N, k, i, i + blockSize);
-            blockWavefront(M, N, k, i, i + blockSize);
+            // blockWavefront(M, N, k, i, i + blockSize);
         }
-        // std::cout << "Thread MAIN waiting for barrier" << std::endl;
-        // bar.arrive_and_wait();
-        // std::cout << "Thread MAIN crossed for barrier" << std::endl;
-        std::cout << "Barrier Cambio diagonale ------------" << std::endl;  //TODO madari da bettere come esecuzione in barrier
+        std::cout << "Thread MAIN waiting for barrier" << std::endl;
+        bar.wait();
+        std::cout << "Thread MAIN crossed for barrier" << std::endl;
+        // std::cout << "Barrier Cambio diagonale ------------" << std::endl;  //TODO madari da bettere come esecuzione in barrier
     }
 }
 
@@ -70,21 +110,23 @@ int main(int argc, char *argv[]) {
     uint64_t t = std::thread::hardware_concurrency();   // Default maximum threads
     uint64_t N = 512;                               // Default size of the matrix (NxN)
 
-    if (argc != 1 && argc != 2 && argc != 4 && argc != 5) {
+    if (argc != 1 && argc != 2 && argc != 3 && argc != 5) {
         usage(argv[0]);
         return -1;
     }
     if (argc > 1) {
+        std::printf("Maximum number of available threads are %d\n",std::thread::hardware_concurrency());
         N = std::stol(argv[1]);
         if (argc > 2) {
-            min = std::stol(argv[2]);               // Suppose to have values bigger-equal than 0
-            max = std::stol(argv[3]);               // Suppose to have values bigger-equal than 0
-            if (min > max) {
-                usage(argv[0]);
-                return -1;
+            t = std::stol(argv[2]);               // Suppose to have values bigger than 0 and smalled then maximum
+            if (argc > 3) {
+                min = std::stol(argv[3]);               // Suppose to have values bigger-equal than 0
+                max = std::stol(argv[4]);               // Suppose to have values bigger-equal than 0
+                if (min > max) {
+                    usage(argv[0]);
+                    return -1;
+                }
             }
-            if (argc > 4)
-                t = std::stol(argv[4]);               // Suppose to have values bigger than 0
         }
     } else {
         std::printf("Using default values\n");
