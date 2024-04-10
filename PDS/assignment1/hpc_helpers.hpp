@@ -65,7 +65,7 @@ class no_init_t {
 public:
 
     static_assert(std::is_fundamental<T>::value &&
-                  std::is_arithmetic<T>::value, 
+                  std::is_arithmetic<T>::value,
                   "wrapped type must be a fundamental, numeric type");
 
     //do nothing

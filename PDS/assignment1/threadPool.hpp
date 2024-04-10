@@ -99,6 +99,9 @@ public:
                     before_task_hook();
                 } // here we release the lock
 
+                // Introduce a small sleep before executing the task can sometimes help in scenarios where tasks are enqueued very quickly
+                std::this_thread::sleep_for(std::chrono::microseconds(1));
+
                 // execute the task in parallel
                 task();
 

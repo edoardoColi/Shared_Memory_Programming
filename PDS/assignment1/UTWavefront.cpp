@@ -5,9 +5,6 @@
 #include <iostream>
 #include <vector>
 #include <thread>
-#include <barrier>
-// #include <mutex>
-// #include <condition_variable>
 #include <random>
 #include <cassert>
 #include <algorithm>        // for std::max
@@ -31,8 +28,6 @@ void usage(char* name) {
 // Emulate some work, just "waste of time"
 void work(std::chrono::microseconds w) {
 
-    // std::cout << "I have " << w.count() << std::endl;
-    
     auto end = std::chrono::steady_clock::now() + w;
     while(std::chrono::steady_clock::now() < end);  // Active waste
 }
@@ -40,9 +35,7 @@ void work(std::chrono::microseconds w) {
 void blockWavefront(const std::vector<int> &M, const uint64_t &N, const uint64_t &diag, const uint64_t &from, const uint64_t &to) {
     uint64_t d = diag;
     uint64_t f = from;
-    uint64_t t = to > (N-d)? N-d : to;
-
-    // std::cout << "Blocco di lavoro con " << d << "-" << f << "-" << t << "" << std::endl;
+    uint64_t t = to > (N-d) ? N-d : to;
 
     for(uint64_t i = f; i < t; ++i) {        // For each element in the block of the scoped diagonal
         work(std::chrono::microseconds(M[i*N+(i+d)]));
@@ -51,18 +44,13 @@ void blockWavefront(const std::vector<int> &M, const uint64_t &N, const uint64_t
 
 void parallelWavefront(const std::vector<int> &M, const uint64_t &N, const uint64_t &t) {
 
-    uint64_t blockSize = N/(t*1); //TODO magari mettere una dimenzione condizionata. non m/p perche senno perdo in prestazioni in caso di workload non bilanciati
-
+    uint64_t blockSize = N/(t*2) > 0 ? N/(t*2) : 1;
     for(uint64_t k = 0; k < N; ++k) {                // For each upper diagonal
-
-        ThreadPool TP(t);
-    
+        ThreadPool TP(t);    
         for(uint64_t i = 0; i < (N-k); i += blockSize) {            // For each element in the diagonal
-
             TP.enqueue(blockWavefront, M, N, k, i, i + blockSize);  // Parallel execution
             // blockWavefront(M, N, k, i, i + blockSize);           // Sequential execution
         }
-
         TP.wait_and_stop();
     }
 }
