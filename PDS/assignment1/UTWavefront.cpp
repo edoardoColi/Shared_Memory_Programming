@@ -5,39 +5,14 @@
 #include <iostream>
 #include <vector>
 #include <thread>
-// #include <barrier>
-#include <mutex>
-#include <condition_variable>
+#include <barrier>
+// #include <mutex>
+// #include <condition_variable>
 #include <random>
 #include <cassert>
 #include <algorithm>        // for std::max
 #include <hpc_helpers.hpp>  // for TIMER* macro
 #include <threadPool.hpp>  // for ThreadPool implementation
-
-class myBarrier {
-public:
-    explicit myBarrier(std::size_t count) : count_(count), waiting_(0), generation_(0) {}
-
-    void wait() {
-        std::unique_lock<std::mutex> lock(mutex_);
-        std::size_t gen = generation_;
-
-        if (++waiting_ == count_) {
-            waiting_ = 0;
-            ++generation_;
-            cv_.notify_all();
-        } else {
-            cv_.wait(lock, [this, gen] { return gen != generation_; });
-        }
-    }
-
-private:
-    std::mutex mutex_;
-    std::condition_variable cv_;
-    std::size_t count_;
-    std::size_t waiting_;
-    std::size_t generation_;
-};
 
 int random(const int &min, const int &max) {
     static std::mt19937 generator(117);
@@ -55,7 +30,7 @@ void usage(char* name) {
 
 void testSleep() {
     std::cout << "Blocco di lavoro - TEST" << std::endl;
-    std::this_thread::sleep_for(std::chrono::seconds(10)); // Sleep for 5 seconds
+    std::this_thread::sleep_for(std::chrono::seconds(5)); // Sleep for 5 seconds
 }
 
 // Emulate some work, just "waste of time"
@@ -73,6 +48,7 @@ void blockWavefront(const std::vector<int> &M, const uint64_t &N, const uint64_t
     uint64_t t = to > (N-d)? N-d : to;
 
     std::cout << "Blocco di lavoro" << std::endl;
+
     for(uint64_t i = f; i < t; ++i) {        // For each element in the block of the scoped diagonal
         work(std::chrono::microseconds(M[i*N+(i+d)]));
     }
@@ -84,23 +60,23 @@ void parallelWavefront(const std::vector<int> &M, const uint64_t &N, const uint6
     uint64_t blockSize = 1; //TODO magari mettere una dimenzione condizionata. non m/p perche senno perdo in prestazioni in caso di workload non bilanciati
 
     for(uint64_t k = 0; k < N; ++k) {                // For each upper diagonal
-        
-        myBarrier bar(N-k+1);                          //TODO dovrebbero essere t spawnti piu il corrente
+
+        std::cout << "Aspetto " << N-k << " +1 del main" << std::endl;
+        std::barrier bar(N-k+1);                          //TODO dovrebbero essere t spawnti piu il corrente
 
         for(uint64_t i = 0; i < (N-k); i += blockSize) {        // For each element in the diagonal
 
             TP.enqueue([&] { 
                 testSleep();
+                // blockWavefront(M, N, k, i, i + blockSize);
+                bar.arrive_and_wait();
             });
-                bar.wait();
-
             // TP.enqueue(blockWavefront, M, N, k, i, i + blockSize);
             // blockWavefront(M, N, k, i, i + blockSize);
         }
         std::cout << "Thread MAIN waiting for barrier" << std::endl;
-        bar.wait();
+        bar.arrive_and_wait();
         std::cout << "Thread MAIN crossed for barrier" << std::endl;
-        // std::cout << "Barrier Cambio diagonale ------------" << std::endl;  //TODO madari da bettere come esecuzione in barrier
     }
 }
 
