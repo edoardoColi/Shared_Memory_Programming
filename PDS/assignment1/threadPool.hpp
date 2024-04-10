@@ -40,16 +40,16 @@ private:
 
         return std::packaged_task<Rtrn(void)>(aux);
     }
-    
+
     // will be executed before execution of a task
     void before_task_hook() {
         active_threads++;
     }
-    
+
     // will be executed after execution of a task
     void after_task_hook() {
         active_threads--;
-                    
+
         if (active_threads == 0 && tasks.empty()) {
             stop_pool = true;
             cv_wait.notify_one();
@@ -58,11 +58,11 @@ private:
 
 public:
     ThreadPool(
-			   uint64_t capacity_) :
+               uint64_t capacity_) :
         stop_pool(false),     // pool is running
         active_threads(0),    // no work to be done
         capacity(capacity_) { // remember size
-        
+
         // this function is executed by the threads
         auto wait_loop = [this] ( ) -> void {
 
@@ -81,7 +81,7 @@ public:
                     // are still tasks to be processed
                     auto predicate = [this] ( ) -> bool {
                         return  (stop_pool) ||
-							!(tasks.empty());
+                            !(tasks.empty());
                     };
 
                     // wait to be waken up on
@@ -95,12 +95,12 @@ public:
 
                     // else extract task from queue
                     task = std::move(tasks.front());
-                    tasks.pop();                    
+                    tasks.pop();
                     before_task_hook();
                 } // here we release the lock
 
                 // Introduce a small sleep before executing the task can sometimes help in scenarios where tasks are enqueued very quickly
-                std::this_thread::sleep_for(std::chrono::microseconds(1));
+                // std::this_thread::sleep_for(std::chrono::microseconds(1));
 
                 // execute the task in parallel
                 task();
@@ -135,19 +135,19 @@ public:
     }
 
     template <typename Func, typename ... Args,
-			  typename Rtrn=typename std::result_of<Func(Args...)>::type>
+              typename Rtrn=typename std::result_of<Func(Args...)>::type>
     auto enqueue(Func && func, Args && ... args) -> std::future<Rtrn> {
 
         // create the task, get the future
         // and wrap task in a shared pointer
         auto task = make_task(func, args...);
-        auto future = task.get_future();		
+        auto future = task.get_future();
         auto task_ptr = std::make_shared<decltype(task)>(std::move(task));
 
         {   // lock the scope
-            std::lock_guard<std::mutex> lock_guard(mutex); 
-                        
-            // you cannot reuse pool after being stopped    
+            std::lock_guard<std::mutex> lock_guard(mutex);
+
+            // you cannot reuse pool after being stopped
             if(stop_pool)
                 throw std::runtime_error("enqueue on stopped ThreadPool");
 
@@ -180,11 +180,11 @@ public:
     void wait_and_stop() {
         // wait for pool being set to stop
         std::unique_lock<std::mutex> unique_lock(mutex);
-        
+
         auto predicate = [&] () -> bool {
             return stop_pool;
         };
-        
+
         cv_wait.wait(unique_lock, predicate);
     }
 };

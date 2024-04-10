@@ -88,13 +88,13 @@ public:
     // postfix increment/decrement operators
     constexpr no_init_t operator ++ (int) noexcept {
        auto old(*this);
-       v_++; 
-       return old; 
+       v_++;
+       return old;
     }
     constexpr no_init_t operator -- (int) noexcept {
        auto old(*this);
-       v_--; 
-       return old; 
+       v_--;
+       return old;
     }
 
     // assignment operators

@@ -46,7 +46,7 @@ void parallelWavefront(const std::vector<int> &M, const uint64_t &N, const uint6
 
     uint64_t blockSize = N/(t*2) > 0 ? N/(t*2) : 1;
     for(uint64_t k = 0; k < N; ++k) {                // For each upper diagonal
-        ThreadPool TP(t);    
+        ThreadPool TP(t);
         for(uint64_t i = 0; i < (N-k); i += blockSize) {            // For each element in the diagonal
             TP.enqueue(blockWavefront, M, N, k, i, i + blockSize);  // Parallel execution
             // blockWavefront(M, N, k, i, i + blockSize);           // Sequential execution
