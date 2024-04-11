@@ -44,7 +44,6 @@ void blockWavefront(const std::vector<int> &M, const uint64_t &N, const uint64_t
 
 void parallelWavefront(const std::vector<int> &M, const uint64_t &N, const uint64_t &t) {
 
-if(1){
     uint64_t reusability = 2;
 
     for(uint64_t k = 0; k < N; ++k) {                // For each upper diagonal
@@ -59,23 +58,11 @@ if(1){
         }
         TP.wait_and_stop();
     }
-} else {
-    uint64_t reusability = 2;
-    uint64_t blockSize = N/(t*reusability) > 0 ? N/(t*reusability) : 1;
-    for(uint64_t k = 0; k < N; ++k) {                // For each upper diagonal
-        ThreadPool TP(t < (N-k) ? t : ((N-k)/reusability)+1);
-        for(uint64_t i = 0; i < (N-k); i += blockSize) {            // For each element in the diagonal
-            TP.enqueue(blockWavefront, M, N, k, i, i + blockSize);  // Parallel execution
-            // blockWavefront(M, N, k, i, i + blockSize);           // Sequential execution
-        }
-        TP.wait_and_stop();
-    }
-}
 }
 
 int main(int argc, char *argv[]) {
-    int min    = 0;                                 // Default minimum time (in microseconds)
-    int max    = 1000;                              // Default maximum time (in microseconds)
+    int min    = 1000;                                 // Default minimum time (in microseconds)
+    int max    = 10000;                              // Default maximum time (in microseconds)
     uint64_t t = std::thread::hardware_concurrency();   // Default maximum threads
     uint64_t N = 512;                               // Default size of the matrix (NxN)
 
