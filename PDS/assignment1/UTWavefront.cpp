@@ -44,7 +44,7 @@ void blockWavefront(const std::vector<int> &M, const uint64_t &N, const uint64_t
 
 void parallelWavefront(const std::vector<int> &M, const uint64_t &N, const uint64_t &t) {
 
-    uint64_t reusability = 3;
+    uint64_t reusability = 2;
     uint64_t blockSize = N/(t*reusability) > 0 ? N/(t*reusability) : 1;
     for(uint64_t k = 0; k < N; ++k) {                // For each upper diagonal
         ThreadPool TP(t < (N-k) ? t : ((N-k)/reusability)+1);
