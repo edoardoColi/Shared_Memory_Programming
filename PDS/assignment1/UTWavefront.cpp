@@ -50,11 +50,11 @@ void parallelWavefront(const std::vector<int> &M, const uint64_t &N, const uint6
 
         auto usedt = t < (N-k) ? t : ((N-k)/reusability) + 1;
         ThreadPool TP(usedt);
-        uint64_t blockSize = N/(usedt*reusability) > 0 ? N/(usedt*reusability) : 1;
+        uint64_t blockSize = (N-k)/(usedt*reusability) > 0 ? (N-k)/(usedt*reusability) : 1;
 
         for(uint64_t i = 0; i < (N-k); i += blockSize) {            // For each element in the diagonal
             TP.enqueue(blockWavefront, M, N, k, i, i + blockSize);  // Parallel execution
-            // blockWavefront(M, N, k, i, i + blockSize);           // Sequential execution
+            // blockWavefront(M, N, k, i, i + blockSize);           // Sequential execution, if wat to use sequential version remember to comment all TP from the code
         }
         TP.wait_and_stop();
     }
