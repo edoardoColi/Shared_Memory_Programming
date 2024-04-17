@@ -22,7 +22,7 @@ int main() {
 
             // alternative
             //cv.wait(unique_lock,
-            //        [&](){ return time_for_breakfast; });
+            //        [&](){ return time_for_breakfast; }); // wait() function can take a lambda function as predicate
         } // lock is finally released
         std::cout << "Time to make coffee!" << std::endl;
     };
@@ -35,7 +35,7 @@ int main() {
         time_for_breakfast = true;
     } // here the lock is released
     // ring the alarm clock
-    cv.notify_one();
+    cv.notify_one();                // When put in the critical section is slower but more secure
     // wait until breakfast is finished
     my_thread.join();
 }

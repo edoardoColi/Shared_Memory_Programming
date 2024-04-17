@@ -4,9 +4,14 @@
 #include <thread>   // std::thread
 
 // this function will be called by the threads (should be void)
-void say_hello(uint64_t id) {
-	std::cout << "Hello from thread: " << id << std::endl;
-}
+void say_hello(uint64_t id) {		//SWAP
+	std::cout << "Hello from thread: " << id << std::endl;		//SWAP
+}		//SWAP
+
+// // This when i want pass by reference, must update under
+// void say_hello(uint64_t & id) {		//SWAP
+// 	std::cout << "Hello from thread: " << id << std::endl;		//SWAP
+// }		//SWAP
 
 // this runs in the master thread
 int main(int argc, char * argv[]) {
@@ -21,7 +26,8 @@ int main(int argc, char * argv[]) {
 		// move operations to the vector after thread creation
 		threads.emplace_back(
 							 // call say_hello with argument id
-							 say_hello, id
+							 say_hello, id		//SWAP
+							// say_hello, std::ref(id)	//SWAP need this if want to use by referenc function, must update above
 							 );
 	
 	// join each thread at the end

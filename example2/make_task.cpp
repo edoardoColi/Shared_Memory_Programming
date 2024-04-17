@@ -31,7 +31,7 @@ bool comp(float value, int64_t threshold) {
 }
 
 int main(int argc, char * argv[]) {
-	auto task = make_task(comp, 10.3, 20);
+	auto task = make_task(comp, 10.3, 20);	//generic function like (whatever function, whatever arguments, ... , ...)
 	auto future = task.get_future();
 	// spawn a thread and detach it
 	std::thread thread(std::move(task));

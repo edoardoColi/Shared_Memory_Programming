@@ -24,11 +24,11 @@ int main(int argc, char * argv[]) {
     for (uint64_t id = 0; id < num_threads; id++)
         threads.emplace_back(
 			 // specify template parameters and arguments
-			 // fibo<uint64_t>, id, std::ref(results[id])
+			 // fibo<uint64_t>, id, std::ref(results[id])       //SWAP
 
 			 // using lambda and automatic type deduction
 			 // pay attention to id, must be passed by value!
-			 [id, &results]() { fibo(id, results[id]); } 
+			 [id, &results]() { fibo(id, results[id]); }        //SWAP in the [] the lambda function get the environment, by default the env is of copied values
 		);
     // join the threads
     for (auto& thread: threads)

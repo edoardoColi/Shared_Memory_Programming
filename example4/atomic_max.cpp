@@ -14,14 +14,14 @@ int main( ) {
     auto false_max = [&] (volatile std::atomic<uint64_t> &counter,
                           const auto& id) -> void {
         for (uint64_t i = id; i < num_iters; i += num_threads)
-            if(i > counter) counter = i;
+            if(i > counter) counter = i;            // Dosn't work because 2 operation (load and store) and are not grandet both atomically
     };
     auto correct_max = [&] (volatile std::atomic<uint64_t> &counter,
                             const auto& id) -> void {
         for (uint64_t i = id; i < num_iters; i += num_threads) {
             auto previous = counter.load();
             while (previous < i &&
-                !counter.compare_exchange_weak(previous, i)) {}
+                !counter.compare_exchange_weak(previous, i)) {}         // Combine the 2 operation above in one completly atomic
         }
     };
     TIMERSTART(incorrect_max);
