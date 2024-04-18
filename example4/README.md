@@ -1,4 +1,4 @@
-# Releted to Lesson 13-1h and 14-1h. Slides 'C++ LockFree Basics'
+# Releted to Lesson 13-1h and 14-1h and 15-1h. Slides 'C++ LockFree Basics'
 Shown what are and how can be user the atomic. Using active wait grant more precision.  
 Example on Sequential Consistency(SC) of atomic valiables with different memory ordering.  
 Used Fences to provide sincronization also in fully relaxed memory ordering.
@@ -20,6 +20,7 @@ example/
 ├── fence_ordering.cpp              (Testing barrier/fance behaviour to see correctness during execution. We specify use of memory_order_release/aquire otherwise compiler use the strictier one of SC,but more costly)
 ├── fence_ordering2.cpp
 ├── spin-lock.cpp                   (Implementation of spin-lock with while on a atomic_flag)
+|
+├── tree-traversal.cpp              (Use a Work-Sharing Pool with defined number of threads)
 └── Makefile
 ```
-tree-traversal.cpp
