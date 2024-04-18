@@ -8,7 +8,7 @@ long fib( long n ) {
 #pragma omp task shared(n1)
     n1 = fib(n-1);
 #pragma omp task shared(n2)
-    n1 = fib(n-2);
+    n2 = fib(n-2);
     // Wait for the two tasks to complete
 #pragma omp taskwait
     return (n1 + n2);
