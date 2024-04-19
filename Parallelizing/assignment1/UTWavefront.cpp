@@ -1,4 +1,4 @@
-// Sequential code of the first SPM Assignment a.a. 23/24
+// Parallel code of the first SPM Assignment a.a. 23/24
 // Compile using:
 // g++ -std=c++20 -O3 -march=native -I. UTWavefront.cpp -o utw
 

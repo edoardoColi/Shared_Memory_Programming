@@ -1,3 +1,7 @@
+// Parallel code of the second SPM Assignment a.a. 23/24
+// Compile using:
+// g++ -std=c++20 -I. -I. -Wall -O3 -o wc Word-Count-par.cpp -pthread -fopenmp
+
 #include <omp.h>  // used here just for omp_get_wtime()
 #include <cstring>
 #include <vector>
@@ -13,6 +17,8 @@ using umap=std::unordered_map<std::string, uint64_t>;
 using pair=std::pair<std::string, uint64_t>;
 struct Comp {
 	bool operator ()(const pair& p1, const pair& p2) const {
+		if (p1.second == p2.second)
+			return p1.first < p2.first;
 		return p1.second > p2.second;
 	}
 };
@@ -23,25 +29,25 @@ uint64_t total_words{0};
 volatile uint64_t extraworkXline{0};
 // ----------------------
 
-void tokenize_line(const std::string& line, umap& UM) {
+void tokenize_line(const std::string& line, umap& UM, uint64_t *tw) {
 	char *tmpstr;
 	char *token = strtok_r(const_cast<char*>(line.c_str()), " \r\n", &tmpstr);
 	while(token) {
-		++UM[std::string(token)];
+		// ++UM[std::string(token)];
 		token = strtok_r(NULL, " \r\n", &tmpstr);
-		++total_words;
+		++(*tw);
 	}
 	for(volatile uint64_t j{0}; j<extraworkXline; j++);
 }
 
-void compute_file(const std::string& filename, umap& UM) {
+void compute_file(const std::string& filename, umap& UM, uint64_t *tw) {
 	std::ifstream file(filename, std::ios_base::in);
 	if (file.is_open()) {
 		std::string line;
 		std::vector<std::string> V;
 		while(std::getline(file, line)) {
 			if (!line.empty()) {
-				tokenize_line(line, UM);
+				tokenize_line(line, UM, tw);
 			}
 		}
 	} 
@@ -122,8 +128,9 @@ int main(int argc, char *argv[]) {
 	// start the time
 	auto start = omp_get_wtime();
 
+	#pragma omp parallel for reduction(+:total_words)
 	for (auto f : filenames) {
-		compute_file(f, UM);
+		compute_file(f, UM, &total_words);
 	}
 
 	auto stop1 = omp_get_wtime();
@@ -137,12 +144,12 @@ int main(int argc, char *argv[]) {
 
 	if (showresults) {
 		// show the results
-		std::cout << "Unique words " << rank.size() << "\n";
+		// std::cout << "Unique words " << rank.size() << "\n";
 		std::cout << "Total words  " << total_words << "\n";
-		std::cout << "Top " << topk << " words:\n";
-		auto top = rank.begin();
-		for (size_t i=0; i < std::clamp(topk, 1ul, rank.size()); ++i)
-			std::cout << top->first << '\t' << top++->second << '\n';
+		// std::cout << "Top " << topk << " words:\n";
+		// auto top = rank.begin();
+		// for (size_t i=0; i < std::clamp(topk, 1ul, rank.size()); ++i)
+			// std::cout << top->first << '\t' << top++->second << '\n';
 	}
 }
 
