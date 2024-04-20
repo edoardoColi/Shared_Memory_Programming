@@ -13,6 +13,8 @@
 #include <unordered_map>
 #include <algorithm>
 
+#include <mutex>
+#include <thread>
 using umap=std::unordered_map<std::string, uint64_t>;
 using pair=std::pair<std::string, uint64_t>;
 struct Comp {
@@ -27,6 +29,7 @@ using ranking=std::multiset<pair, Comp>;
 // ------ globals --------
 uint64_t total_words{0};
 volatile uint64_t extraworkXline{0};
+std::mutex mutex;
 // ----------------------
 
 void tokenize_line(const std::string& line, umap& UMlocal, uint64_t *tw) {
@@ -40,7 +43,7 @@ void tokenize_line(const std::string& line, umap& UMlocal, uint64_t *tw) {
 	for(volatile uint64_t j{0}; j<extraworkXline; j++);
 }
 
-void compute_file(const std::string& filename, umap& UM, uint64_t *tw, umap& UMlocal) {
+void compute_file_critical(const std::string& filename, umap& UM, uint64_t *tw, umap& UMlocal) {
 	std::ifstream file(filename, std::ios_base::in);
 	if (file.is_open()) {
 		std::string line;
@@ -55,12 +58,36 @@ void compute_file(const std::string& filename, umap& UM, uint64_t *tw, umap& UMl
 	// Update the external values of UM within the critical region by the local copie of UM
 #pragma omp critical
 	{
-		for (const auto& pair : UMlocal) {
+		for (const auto& pair : UMlocal)
 			UM[pair.first] += pair.second;
-	    }
 	}
 }
 
+void tokenize_line_atomic(const std::string& line, umap& UM, uint64_t *tw) {
+	char *tmpstr;
+	char *token = strtok_r(const_cast<char*>(line.c_str()), " \r\n", &tmpstr);
+	while(token) {
+		std::lock_guard<std::mutex> lock_guard(mutex);
+			++UM[std::string(token)];
+		token = strtok_r(NULL, " \r\n", &tmpstr);
+		++(*tw);
+	}
+	for(volatile uint64_t j{0}; j<extraworkXline; j++);
+}
+
+void compute_file(const std::string& filename, umap& UM, uint64_t *tw) {
+	std::ifstream file(filename, std::ios_base::in);
+	if (file.is_open()) {
+		std::string line;
+		std::vector<std::string> V;
+		while(std::getline(file, line)) {
+			if (!line.empty()) {
+				tokenize_line_atomic(line, UM, tw);
+			}
+		}
+	} 
+	file.close();
+}
 
 
 int main(int argc, char *argv[]) {
@@ -129,26 +156,45 @@ int main(int argc, char *argv[]) {
 		usage_and_exit();
 	}
 
-	// used for storing results
-	umap UM;
+	// used for storing results of critical
+	umap UMfinal;
 	umap UMlocal;
 
 	// start the time
-	auto start = omp_get_wtime();
+	auto start_c = omp_get_wtime();
 
-#pragma omp parallel for shared(UM) firstprivate(UMlocal) reduction(+:total_words)
+#pragma omp parallel for shared(UMfinal) firstprivate(UMlocal) reduction(+:total_words)
 	for (auto f : filenames) {
-		compute_file(f, UM, &total_words, UMlocal);
+		compute_file_critical(f, UMfinal, &total_words, UMlocal);
 	}
 
-	auto stop1 = omp_get_wtime();
+	auto stop1_c = omp_get_wtime();
+
+	// used for storing results of atomic
+	umap UMatomic;
+	
+	// start the time
+	auto start_a = omp_get_wtime();
+
+#pragma omp parallel for shared(UMatomic) reduction(+:total_words)
+	for (auto f : filenames) {
+		compute_file(f, UMatomic, &total_words);
+	}
+
+	auto stop1_a = omp_get_wtime();
+
+	auto start_s = omp_get_wtime();
 
 	// sorting in descending order
-	ranking rank(UM.begin(), UM.end());
+	ranking rank(UMfinal.begin(), UMfinal.end());
 
-	auto stop2 = omp_get_wtime();
-	std::printf("Compute time (s) %f\nSorting time (s) %f\n",
-				stop1 - start, stop2 - stop1);
+	auto stop2s = omp_get_wtime();
+	std::printf("Compute time critical (s) %f\n",
+				stop1_c - start_c);
+	std::printf("Compute time atomic (s) %f\n",
+				stop1_a - start_a);
+	std::printf("Sorting time (s) %f\n",
+				stop2s - start_s);
 
 	if (showresults) {
 		// show the results
