@@ -29,29 +29,36 @@ uint64_t total_words{0};
 volatile uint64_t extraworkXline{0};
 // ----------------------
 
-void tokenize_line(const std::string& line, umap& UM, uint64_t *tw) {
+void tokenize_line(const std::string& line, umap& UMlocal, uint64_t *tw) {
 	char *tmpstr;
 	char *token = strtok_r(const_cast<char*>(line.c_str()), " \r\n", &tmpstr);
 	while(token) {
-		// ++UM[std::string(token)];
+		++UMlocal[std::string(token)];
 		token = strtok_r(NULL, " \r\n", &tmpstr);
 		++(*tw);
 	}
 	for(volatile uint64_t j{0}; j<extraworkXline; j++);
 }
 
-void compute_file(const std::string& filename, umap& UM, uint64_t *tw) {
+void compute_file(const std::string& filename, umap& UM, uint64_t *tw, umap& UMlocal) {
 	std::ifstream file(filename, std::ios_base::in);
 	if (file.is_open()) {
 		std::string line;
 		std::vector<std::string> V;
 		while(std::getline(file, line)) {
 			if (!line.empty()) {
-				tokenize_line(line, UM, tw);
+				tokenize_line(line, UMlocal, tw);
 			}
 		}
 	} 
 	file.close();
+	// Update the external values of UM within the critical region by the local copie of UM
+#pragma omp critical
+	{
+		for (const auto& pair : UMlocal) {
+			UM[pair.first] += pair.second;
+	    }
+	}
 }
 
 
@@ -124,13 +131,14 @@ int main(int argc, char *argv[]) {
 
 	// used for storing results
 	umap UM;
+	umap UMlocal;
 
 	// start the time
 	auto start = omp_get_wtime();
 
-	#pragma omp parallel for reduction(+:total_words)
+#pragma omp parallel for shared(UM) firstprivate(UMlocal) reduction(+:total_words)
 	for (auto f : filenames) {
-		compute_file(f, UM, &total_words);
+		compute_file(f, UM, &total_words, UMlocal);
 	}
 
 	auto stop1 = omp_get_wtime();
@@ -144,12 +152,12 @@ int main(int argc, char *argv[]) {
 
 	if (showresults) {
 		// show the results
-		// std::cout << "Unique words " << rank.size() << "\n";
+		std::cout << "Unique words " << rank.size() << "\n";
 		std::cout << "Total words  " << total_words << "\n";
-		// std::cout << "Top " << topk << " words:\n";
-		// auto top = rank.begin();
-		// for (size_t i=0; i < std::clamp(topk, 1ul, rank.size()); ++i)
-			// std::cout << top->first << '\t' << top++->second << '\n';
+		std::cout << "Top " << topk << " words:\n";
+		auto top = rank.begin();
+		for (size_t i=0; i < std::clamp(topk, 1ul, rank.size()); ++i)
+			std::cout << top->first << '\t' << top++->second << '\n';
 	}
 }
 

@@ -13,6 +13,8 @@ using umap=std::unordered_map<std::string, uint64_t>;
 using pair=std::pair<std::string, uint64_t>;
 struct Comp {
 	bool operator ()(const pair& p1, const pair& p2) const {
+		if (p1.second == p2.second)
+			return p1.first < p2.first;
 		return p1.second > p2.second;
 	}
 };
