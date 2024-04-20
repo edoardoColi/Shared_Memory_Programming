@@ -36,37 +36,6 @@ volatile uint64_t extraworkXline{0};
 std::mutex mutex;
 // ----------------------
 
-void tokenize_line(const std::string& line, umap& UMlocal, uint64_t *tw) {
-	char *tmpstr;
-	char *token = strtok_r(const_cast<char*>(line.c_str()), " \r\n", &tmpstr);
-	while(token) {
-		++UMlocal[std::string(token)];
-		token = strtok_r(NULL, " \r\n", &tmpstr);
-		++(*tw);
-	}
-	for(volatile uint64_t j{0}; j<extraworkXline; j++);
-}
-
-void compute_file_critical(const std::string& filename, umap& UM, uint64_t *tw, umap& UMlocal) {
-	std::ifstream file(filename, std::ios_base::in);
-	if (file.is_open()) {
-		std::string line;
-		std::vector<std::string> V;
-		while(std::getline(file, line)) {
-			if (!line.empty()) {
-				tokenize_line(line, UMlocal, tw);
-			}
-		}
-	} 
-	file.close();
-	// Update the external values of UM within the critical region by the local copie of UM
-#pragma omp critical
-	{
-		for (const auto& pair : UMlocal)
-			UM[pair.first] += pair.second;
-	}
-}
-
 void tokenize_line_atomic(const std::string& line, umap& UM, uint64_t *tw) {
 	char *tmpstr;
 	char *token = strtok_r(const_cast<char*>(line.c_str()), " \r\n", &tmpstr);
@@ -119,6 +88,37 @@ void compute_file2(const std::string& filename, umap& UM, uint64_t *tw) {
 			}
 	}
 file.close();
+}
+
+void tokenize_line(const std::string& line, umap& UMlocal, uint64_t *tw) {
+	char *tmpstr;
+	char *token = strtok_r(const_cast<char*>(line.c_str()), " \r\n", &tmpstr);
+	while(token) {
+		++UMlocal[std::string(token)];
+		token = strtok_r(NULL, " \r\n", &tmpstr);
+		++(*tw);
+	}
+	for(volatile uint64_t j{0}; j<extraworkXline; j++);
+}
+
+void compute_file_critical(const std::string& filename, umap& UM, uint64_t *tw, umap& UMlocal) {
+	std::ifstream file(filename, std::ios_base::in);
+	if (file.is_open()) {
+		std::string line;
+		std::vector<std::string> V;
+		while(std::getline(file, line)) {
+			if (!line.empty()) {
+				tokenize_line(line, UMlocal, tw);
+			}
+		}
+	} 
+	file.close();
+	// Update the external values of UM within the critical region by the local copie of UM
+#pragma omp critical
+	{
+		for (const auto& pair : UMlocal)
+			UM[pair.first] += pair.second;
+	}
 }
 
 int main(int argc, char *argv[]) {
@@ -193,7 +193,7 @@ int main(int argc, char *argv[]) {
 	// start the time
 	auto start_c = omp_get_wtime();
 
-#pragma omp parallel for shared(UMfinal) firstprivate(UMlocal) reduction(+:total_words)
+#pragma omp parallel for shared(UMfinal) reduction(+:total_words)
 	for (auto f : filenames) {
 		umap UMlocal;
 		compute_file_critical(f, UMfinal, &total_words, UMlocal);
@@ -216,7 +216,7 @@ int main(int argc, char *argv[]) {
 
 	// used for storing results of atomic
 	umap UMatomic;
-	
+
 	// start the time
 	auto start_a = omp_get_wtime();
 

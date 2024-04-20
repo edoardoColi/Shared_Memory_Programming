@@ -1,2 +1,0 @@
-Word-Count-par.test
-Word-Count-seq.test
