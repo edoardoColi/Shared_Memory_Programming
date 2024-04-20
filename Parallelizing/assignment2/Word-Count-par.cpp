@@ -188,7 +188,6 @@ int main(int argc, char *argv[]) {
 	}
 
 	// used for storing results of critical
-	umap UMlocal;
 	umap UMfinal;
 
 	// start the time
@@ -196,6 +195,7 @@ int main(int argc, char *argv[]) {
 
 #pragma omp parallel for shared(UMfinal) firstprivate(UMlocal) reduction(+:total_words)
 	for (auto f : filenames) {
+		umap UMlocal;
 		compute_file_critical(f, UMfinal, &total_words, UMlocal);
 	}
 
