@@ -1,6 +1,9 @@
 // Parallel code of the second SPM Assignment a.a. 23/24
 // Compile using:
 // g++ -std=c++20 -I. -I. -Wall -O3 -o wc Word-Count-par.cpp -pthread -fopenmp
+//
+// Execute with:
+// ./wc /opt/SPMcode/A2/filelist.txt 0 5 1
 
 #include <omp.h>  // used here just for omp_get_wtime()
 #include <cstring>
@@ -15,6 +18,7 @@
 
 #include <mutex>
 #include <thread>
+
 using umap=std::unordered_map<std::string, uint64_t>;
 using pair=std::pair<std::string, uint64_t>;
 struct Comp {
@@ -89,6 +93,33 @@ void compute_file(const std::string& filename, umap& UM, uint64_t *tw) {
 	file.close();
 }
 
+void tokenize_line_critical(const std::string& line, umap& UM, uint64_t *tw) {
+	char *tmpstr;
+	char *token = strtok_r(const_cast<char*>(line.c_str()), " \r\n", &tmpstr);
+	while(token) {
+#pragma omp critical
+{
+			++UM[std::string(token)];
+}
+			token = strtok_r(NULL, " \r\n", &tmpstr);
+			++(*tw);
+	}
+	for(volatile uint64_t j{0}; j<extraworkXline; j++);
+}
+
+void compute_file2(const std::string& filename, umap& UM, uint64_t *tw) {
+	std::ifstream file(filename, std::ios_base::in);
+	if (file.is_open()) {
+			std::string line;
+			std::vector<std::string> V;
+			while(std::getline(file, line)) {
+					if (!line.empty()) {
+							tokenize_line_critical(line, UM, tw);
+					}
+			}
+	}
+file.close();
+}
 
 int main(int argc, char *argv[]) {
 
@@ -157,8 +188,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	// used for storing results of critical
-	umap UMfinal;
 	umap UMlocal;
+	umap UMfinal;
 
 	// start the time
 	auto start_c = omp_get_wtime();
@@ -168,7 +199,20 @@ int main(int argc, char *argv[]) {
 		compute_file_critical(f, UMfinal, &total_words, UMlocal);
 	}
 
-	auto stop1_c = omp_get_wtime();
+	auto stop_c = omp_get_wtime();
+
+	// used for storing results of tokenizer critical
+	umap UMcritical;
+
+	// start the time
+	auto start_tc = omp_get_wtime();
+
+#pragma omp parallel for shared(UMcritical) reduction(+:total_words)
+	for (auto f : filenames) {
+			compute_file2(f, UMcritical, &total_words);
+	}
+
+	auto stop_tc = omp_get_wtime();
 
 	// used for storing results of atomic
 	umap UMatomic;
@@ -181,20 +225,22 @@ int main(int argc, char *argv[]) {
 		compute_file(f, UMatomic, &total_words);
 	}
 
-	auto stop1_a = omp_get_wtime();
+	auto stop_a = omp_get_wtime();
 
 	auto start_s = omp_get_wtime();
 
 	// sorting in descending order
 	ranking rank(UMfinal.begin(), UMfinal.end());
 
-	auto stop2s = omp_get_wtime();
-	std::printf("Compute time critical (s) %f\n",
-				stop1_c - start_c);
-	std::printf("Compute time atomic (s) %f\n",
-				stop1_a - start_a);
-	std::printf("Sorting time (s) %f\n",
-				stop2s - start_s);
+        auto stop_s = omp_get_wtime();
+        std::printf("Compute time critical (s)           %f\n",
+                                stop_c - start_c);
+        std::printf("Compute time tokenizer critical (s) %f\n",
+                                stop_tc - start_tc);
+        std::printf("Compute time guard_lock (s)         %f\n",
+                                stop_a - start_a);
+        std::printf("Sorting time (s) %f\n",
+                                stop_s - start_s);
 
 	if (showresults) {
 		// show the results
