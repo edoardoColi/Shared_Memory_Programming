@@ -16,7 +16,7 @@ struct firstStage: ff_node_t<float> {
     firstStage(const size_t N):N(N) {}
     float* svc(float *) {
         for(size_t i=0; i<N; ++i) {
-            ff_send_out(new float(i));
+            ff_send_out(new float(i));      // Basically we avoid use the pointer of the object passed after have sent it out
         }
         return EOS;
     }
