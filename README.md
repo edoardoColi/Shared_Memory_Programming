@@ -1,4 +1,4 @@
-# Practice on Message Passing Interface
+# Practice on Parallel Programming:Message Passing Interface, openMP, Threads
 
 <!--
 che architettuera di cluster ha bisogno di slurm;

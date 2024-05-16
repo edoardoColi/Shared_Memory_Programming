@@ -24,13 +24,3 @@ example/
 ├── cho1024.bin
 └── Makefile
 ```
-
-
-
-
-
-
-
-
-
-
