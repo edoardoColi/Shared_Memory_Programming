@@ -1,4 +1,4 @@
-# Releted to Lesson 16-1h+2h and 17-1h. Slides 'OpenMP'
+# Releted to Lesson 16-1h+2h and 17-1h+2h. Slides 'OpenMP'
 To show and test how use directives of OpenMp. In omp_hello3 is also shown how use timers.
 ## Here it is a structure of the example folder
 ```
