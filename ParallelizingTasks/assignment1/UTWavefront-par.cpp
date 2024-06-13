@@ -56,6 +56,7 @@ void parallelWavefront(const std::vector<int> &M, const uint64_t &N, const uint6
             TP.enqueue(blockWavefront, M, N, k, i, i + blockSize);  // Parallel execution
             // blockWavefront(M, N, k, i, i + blockSize);           // Sequential execution, if wat to use sequential version remember to comment all TP from the code
         }
+        TP.starting_pool();
         TP.wait_and_stop();
     }
 }

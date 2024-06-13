@@ -1,6 +1,6 @@
 // Parallel code of the second SPM Assignment a.a. 23/24
 // Compile using:
-// g++ -std=c++20 -I. -I. -Wall -O3 -o wc Word-Count-par.cpp -pthread -fopenmp
+// g++ -std=c++20 -I. -I. -Wall -O3 -o wc Word-Count-par-for.cpp -pthread -fopenmp
 //
 // Execute with:
 // ./wc /opt/SPMcode/A2/filelist.txt 0 5 1

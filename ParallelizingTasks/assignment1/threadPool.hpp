@@ -25,6 +25,7 @@ private:
 
     // the state of the thread pool
     bool stop_pool;
+    bool start_pool;
     std::atomic<uint32_t> active_threads;
     const uint32_t capacity;
 
@@ -50,7 +51,7 @@ private:
     void after_task_hook() {
         active_threads--;
 
-        if (active_threads == 0 && tasks.empty()) {
+        if (active_threads == 0 && tasks.empty() && start_pool == true) {
             stop_pool = true;
             cv_wait.notify_one();
         }
@@ -60,6 +61,7 @@ public:
     ThreadPool(
                uint64_t capacity_) :
         stop_pool(false),     // pool is running
+        start_pool(false),     // pool waiting to start
         active_threads(0),    // no work to be done
         capacity(capacity_) { // remember size
 
@@ -186,6 +188,10 @@ public:
         };
 
         cv_wait.wait(unique_lock, predicate);
+    }
+
+    void starting_pool() {
+        start_pool = true;
     }
 };
 
