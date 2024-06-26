@@ -1,0 +1,36 @@
+dovendo eseguire la computazione per diagonali, praticamente non sfruttiamo la cache quasi niente. 
+Forse l'unico miglioramento possibile è fare la prima diagonale dall'alto verso il basso, la seconda diagonale
+in ordine inverso, dal basso verso l'alto, e così via. 
+
+ma fastflow fatto con la farm penso se ne sbatta il cazzo.
+
+fare riferimento al mio chatpgt.
+
+1) il nodo Source prende la prima diagonale della matrice, la divide in K pezzetti tale che 
+   K= N°workers * reusability ed invia ai workers, in questo modo ogni worker fa "reusability" computazioni 
+   per ogni diagonale, se le computazioni sono perfettamente bilanciate. (svc_init)
+
+   oppure potrebbe mandare ogni singolo elemento della diagonale, da testare. IMPLEMENTATO COSI!!!
+
+2) i workers fanno la computazione, accedendo alla matrice in sola lettura quindi non c'è bisogno di lock, 
+   poi tramite il feedback channel inviano alla Source il risultato. NO, AGGIORNANO DIRETTAMENTE LA MATRICE
+
+3) Source, per ogni risultato che gli viene inviato, aggiorna la matrice (anche qui senza lock penso perchè 
+   è l'unico thread ad accedervi: può succedere che un worker stia leggendo in contemporanea alla scrittura 
+   della Source, ma la lettura e la scrittura vengono sicuramente eseguite su elementi diversi della matrice).
+   (svc). NO, IMPLEMENTA SOLO LA BARRIER IN MODO DA FARE UNA DIAGONALE ALLA VOLTA
+
+4) quando Source riceve tutti i risultati di una diagonale( if (tasks_done == tasks_sent) su chatgpt) allora
+   passa alla prossima diagonale (tenendo il conto delle diagonali eseguite con variabile "batches_sent"),
+   resettando i contatori "tasks_done" e "tasks_sent".
+   In questo modo abbiamo una barrier, solo alla fine di una diagonale si passa alla prossima
+
+5) quando tutte le diagonali sono eseguite ( quando "batches_sent" arriva a "max_batches", ovvero il numero
+   di diagonali totali) Source invia EOS ai workers e RITORNA EOS
+
+La coda dei tasks dei workers ha dimensione 1 in modo da implementare uno scheduling dinamico.
+
+
+
+se utilizzassimo due source node( facendolo diventare un all to all) allora servirebbero le lock per 
+gli accessi alla matrice delle due source e una divisione complicata delle diagonali. DA EVITARE
