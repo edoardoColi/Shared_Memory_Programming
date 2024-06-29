@@ -1,5 +1,14 @@
 // Compile using:
-// g++ -std=c++20 -I. -I /home/emiliano/fastflow -Wall -O3 -DNDEBUG -ffast-math -o pff Project_ff.cpp -pthread
+// g++ -std=c++20 -I. -I /home/e.coli3/fastflow -Wall -O3 -DNDEBUG -ffast-math -o pff Project_ff.cpp -pthread
+
+// echo >> esecuzioni ;for i in {1..10};do ./pff 2084 3 >> esecuzioni ;done
+// echo >> esecuzioni ;for i in {1..10};do ./pff 2084 5 >> esecuzioni ;done
+// echo >> esecuzioni ;for i in {1..10};do ./pff 2084 9 >> esecuzioni ;done
+// echo >> esecuzioni ;for i in {1..10};do ./pff 2084 17 >> esecuzioni ;done
+// echo >> esecuzioni ;for i in {1..10};do ./pff 2084 22 >> esecuzioni ;done
+// echo >> esecuzioni ;for i in {1..10};do ./pff 2084 27 >> esecuzioni ;done
+// echo >> esecuzioni ;for i in {1..10};do ./pff 2084 32 >> esecuzioni ;done
+// echo >> esecuzioni ;for i in {1..10};do ./pff 2084 40 >> esecuzioni ;done
 
 #include <iostream>
 #include <vector>
@@ -41,7 +50,7 @@ struct Worker: ff_node_t<Position, int> {
         for(uint64_t i=0; i< diag; ++i){
             result=result+ ( M[current_pos -i-1]* M[current_pos +((i+1)*N)] ); //sinistra * sotto //TODO dotprod dovrebbe essere questo, giusto?
         }
-        result=std::cbrt(result);
+        // result=std::cbrt(result);
         M[current_pos]=result;
 
 
@@ -58,7 +67,7 @@ struct Worker: ff_node_t<Position, int> {
 
 
 
-struct Source: ff_node_t<int, Position> {
+struct Source: ff_monode_t<int, Position> {
     uint64_t num_workers;
     uint64_t tasks_sent = 0;
     uint64_t tasks_done = 0;
@@ -67,7 +76,7 @@ struct Source: ff_node_t<int, Position> {
 
 
 
-    Source(uint64_t num_workers, uint64_t max_batches, std::vector<double> &M) : num_workers(num_workers), max_batches(max_batches), M(M) {}
+    Source(uint64_t num_workers, uint64_t max_batches) : num_workers(num_workers), max_batches(max_batches) {}
 
     uint64_t N= max_batches;
 
@@ -92,11 +101,11 @@ struct Source: ff_node_t<int, Position> {
                 send_tasks();
             } else {
                 // Send EOS to workers
-                for (uint64_t i = 0; i < num_workers; ++i) {
-                    ff_send_out(EOS); //TODO come cazzo si fa la broadcast? guardare nei codici del prof? ho guardato anche in assignment 3,
-                                        // non gli piace, non capisco. sara mica quello che dice a inizio slide? di lanciare il file bash
-                }
-                //broadcast_task(EOS);
+                // for (uint64_t i = 0; i < num_workers; ++i) {
+                //     ff_send_out(EOS); //TODO come cazzo si fa la broadcast? guardare nei codici del prof? ho guardato anche in assignment 3,
+                //                         // non gli piace, non capisco. sara mica quello che dice a inizio slide? di lanciare il file bash
+                // }
+                broadcast_task(EOS);
                 return EOS;
             }
         }
@@ -118,8 +127,6 @@ struct Source: ff_node_t<int, Position> {
         }
         N--;
     }
-
-    std::vector<double> &M; // Reference to the shared matrix
 };
 
 
@@ -160,7 +167,7 @@ int main(int argc, char *argv[]) {
                 N = std::stol(argv[1]);
         if (argc > 2) {
             uint64_t max_workers = std::thread::hardware_concurrency()-1; //-1 perche c'e il Source node
-            std::printf("Maximum number of workers are %ld\n",max_workers); //TODO giusto?
+            // std::printf("Maximum number of workers are %ld\n",max_workers); //TODO giusto?
             num_workers = std::stol(argv[2]);
             if(num_workers>max_workers) //TODO qui lo limito, va bene o dobbiamo sforare nei test?
                 num_workers=max_workers;
@@ -181,7 +188,7 @@ int main(int argc, char *argv[]) {
     auto init=[&]() {
             for(uint64_t i = 0; i< N; ++i) { // For each element in the major diagonal
                 double t = (i+1);
-                t= t/N;
+                // t= t/N;
                 M[i*N + i] = t;
             }
         };
@@ -202,7 +209,7 @@ int main(int argc, char *argv[]) {
 
 
 
-    Source source(num_workers, (N-1), M);
+    Source source(num_workers, (N-1));
     std::vector<std::unique_ptr<ff_node> > workers;
     for (uint64_t i = 0; i < num_workers; ++i) {
         workers.push_back(make_unique<Worker>(M));
@@ -213,8 +220,8 @@ int main(int argc, char *argv[]) {
     farm.wrap_around();
     
     // Configure the farm's load balancer to have a fixed-size queue of 1
-    farm.set_scheduling_ondemand(); // Set on-demand scheduling policy
-    farm.setFixedSize(1); // Set the worker's task queue size to 1
+    // farm.set_scheduling_ondemand(); // Set on-demand scheduling policy
+    // farm.setFixedSize(8); // Set the worker's task queue size to 1
 
     //TODO magari cambiare la policy di scheduling e fare test? i task in teoria sono bilanciati quindi non c'e bisogno di schedule dinamico?
 

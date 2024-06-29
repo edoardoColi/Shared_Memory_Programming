@@ -1,6 +1,7 @@
 // Compile using:
 // g++ -std=c++20 -Wall -O3 -DNDEBUG -o pseq Project_seq.cpp
 
+// echo >> esecuzioni ;for i in {1..10};do ./pseq 2048 >> esecuzioni ;done
 
 #include <iostream>
 #include <vector>
@@ -48,7 +49,7 @@ int main(int argc, char *argv[]) {
     init();
 
    
-#if 1 //stampa la matrice
+#if 0 //stampa la matrice
         for(uint64_t i=0;i<N;++i){
             for(uint64_t j=0; j<N;++j){
                 std::printf("%f ",M[i*N+j]); //TODO gli elementi sono double, ok cosi?
@@ -99,7 +100,7 @@ int main(int argc, char *argv[]) {
     std::chrono::duration<double> elapsed_seconds = end-start;
     std::cout << "tempo sequenziale: " << elapsed_seconds.count() << std::endl;
 
-#if 1 //stampa la matrice 
+#if 0 //stampa la matrice 
     for(uint64_t i=0;i<N;++i){
         for(uint64_t j=0; j<N;++j){
             std::printf("%f ",M[i*N+j]); //TODO gli elementi sono double, ok cosi?
