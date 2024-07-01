@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## specify the name of the job in the queueing system
-#SBATCH --job-name=Nkeys
+#SBATCH --job-name=Matrix_mpi
 
 ## specify the partition for the resource allocation. if not specified, slurm is allowed to take the default(the one with a star *)
 #SBATCH --partition=normal
@@ -30,3 +30,8 @@ echo "Program executed on: $SLURM_JOB_NODELIST"
 
 # srun --mpi=pmix pmpi 4
 mpirun --report-bindings pmpi 4
+# mpirun --report-bindings pmpi 512
+# mpirun --report-bindings pmpi 1024
+# mpirun --report-bindings pmpi 2048
+# mpirun --report-bindings pmpi 4096
+# mpirun --report-bindings pmpi 10000
