@@ -25,8 +25,7 @@
     #define TIMERSTOP(label)                                                   \
         b##label = std::chrono::system_clock::now();                           \
         std::chrono::duration<double> delta##label = b##label-a##label;        \
-        std::cout << "# elapsed time ("<< #label <<"): "                       \
-                  << delta##label.count()  << "s" << std::endl;
+        std::cout << delta##label.count()  << "s" << std::endl;
 #else
     #define TIMERSTOP(label)                                                   \
             cudaEventRecord(stop##label, 0);                                   \

@@ -1,114 +1,63 @@
-// Sequential code of the SPM project a.a. 23/24
-// Compile using:
-// g++ -std=c++20 -Wall -O3 -DNDEBUG -o wfs Project_seq.cpp
-
-// echo >> esecuzioni ;for i in {1..10};do ./pseq 2048 >> esecuzioni ;done
+/* Sequential code of the SPM project a.a. 23/24
+Compile using:
+g++ -std=c++20 -O3 -march=native -I. Wf_seq.cpp -o wfs
+*/
 
 #include <iostream>
 #include <vector>
 #include <cmath>
 
-#include <hpc_helpers.hpp>  // for TIMER* macro
-
-void usage(char* name) {
-    std::printf("use: %s N\n", name);
-    std::printf("    N size of the square matrix\n");
-}
-
-
-
-
-
-
+#include <hpc_helpers.hpp>  //For TIMER* macro
 
 int main(int argc, char *argv[]) {
-    
-    uint64_t N = 512;
-   
+
     if (argc != 1 && argc != 2) {
-        usage(argv[0]);
+        std::cout << "use " << argv[0] << " <MatrixSize>" << std::endl;
         return -1;
     }
 
+    uint64_t N = 512;   //Default value
     if (argc > 1) {
-                N = std::stol(argv[1]);
-    } else {
-        std::printf("Using default values: matrix size=%ld\n", N);
+        N = std::stol(argv[1]);
     }
+    std::cout << "Sequential <MatrixSize>,<Workers>" << std::endl << "Wavefront(" << N << ",1) --> ";
 
+    std::vector<double> M(N*N, 0);  //Filled with 0
 
-    std::vector<double> M(N*N, 0); // Allocate the matrix, default value 0
-
-    // init function
     auto init=[&]() {
-            for(uint64_t i = 0; i< N; ++i) { // For each element in the major diagonal
-                double t = (i+1);
-                // t= t/N;
-                M[i*N + i] = t;
-            }
-        };
+        for(uint64_t i=0; i < N; i++) {    //For each element in the major diagonal
+            double t = (i+1.)/N;
+            M[i*N + i] = t;
+        }
+    };
     init();
 
-   
-#if 0 //stampa la matrice
-        for(uint64_t i=0;i<N;++i){
-            for(uint64_t j=0; j<N;++j){
-                std::printf("%f ",M[i*N+j]); //TODO gli elementi sono double, ok cosi?
+    TIMERSTART(wavefront);
+    uint64_t diag_size = N-1;
+    for(uint64_t i=1; i < N; i++) {  //For each diagonal
+        for(uint64_t j=0; j < diag_size; j++) {  //For each element in the diagonal
+            uint64_t vect_pos = (j * (N + 1)) + i;  //Absolute position
+
+            double dp = 0.0;
+            for(uint64_t k=0; k < i; k++) {
+                dp = dp + (M[vect_pos - k - 1]* M[vect_pos + ((k + 1) * N)]);
             }
-        std::printf("\n");
+            dp = std::cbrt(dp);
+            M[vect_pos] = dp;
         }
-#endif
+        diag_size--;
+    }
+    TIMERSTOP(wavefront);
 
-
-
-
-
-
-
-
-
-    auto start = std::chrono::high_resolution_clock::now(); //TODO il timer va bene questo?
-
-
-
-
-    uint64_t size=N-1;
-
-
-    for(uint64_t i=0;i<(N-1);++i){
-        for(uint64_t k=0;k<size;++k){
-            uint64_t diag= N-size;
-            uint64_t current_pos= (k*(N +1)) +diag;
-            double result=0;
-
-            for(uint64_t j=0; j<diag;++j){
-                result=result + (M[current_pos -j-1]* M[current_pos +((j+1)*N)]);
+    #if 0   //Print matrix
+            std::printf("\n");
+            for(uint64_t i=0; i < N; i++){
+                for(uint64_t j=0; j < N; j++){
+                    std::printf("%f ",M[i*N + j]);
+                }
+            std::printf("\n");
             }
-            // result=std::cbrt(result);
-            M[current_pos]=result;
-        }
-        size--;
-    }
+    #endif
 
-
-
-
-
-
-
-
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed_seconds = end-start;
-    std::cout << "tempo sequenziale: " << elapsed_seconds.count() << std::endl;
-
-#if 0 //stampa la matrice 
-    for(uint64_t i=0;i<N;++i){
-        for(uint64_t j=0; j<N;++j){
-            std::printf("%f ",M[i*N+j]); //TODO gli elementi sono double, ok cosi?
-        }
-        std::printf("\n");
-    }
-#endif
-    
     return 0;
 }
