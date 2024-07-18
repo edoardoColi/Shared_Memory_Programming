@@ -3,9 +3,9 @@
 #include <cmath>
 #include <vector>
 // Compile using the code:
-// make
+// mpicxx -std=c++20 -Wall -O3 -o pmpi Project_mpi.cpp
 // Run using the code:
-// sbatch launcher.sh
+// mpirun -np 4 ./pmpi
 
 
 void usage(char* name) {
@@ -72,57 +72,45 @@ int main(int argc, char *argv[]) {
         uint64_t num_elements = N - diag;
 
         // Calculate the number of elements per process. Over estimation
-        uint64_t elements_per_proc = (num_elements + size - 1) / size;
+        uint64_t elements_per_proc = (num_elements + size -1 )/ size;
 
         // Define the start and end indices for this process' range
         uint64_t start_index = rank * elements_per_proc;
         uint64_t end_index = std::min((rank + 1) * elements_per_proc, num_elements);
-        // std::cout << "DIAG " << diag << " Sono " << rank << " con " << start_index << " e " << end_index << " e " << elements_per_proc << std::endl;
+
+        //std::cout << "DIAG " << diag << " Sono " << rank << " start " << start_index << " end " << end_index << " cioe quanti? " << elements_per_proc << std::endl;
+
+
 
         // Create a local buffer for the elements that this process will compute
-        std::vector<double> local_elements(num_elements, 0);
-        // uint64_t local_index = 0;
+        std::vector<double> local_elements(elements_per_proc, 0);
+        uint64_t local_index = 0;
 
-        if (start_index <= end_index){
-            // Process each element in the assigned part of the diagonal
-            for (uint64_t ind = start_index; ind < end_index; ++ind) {
-                uint64_t current_pos= ind*(N+1) + diag;
-                double result=0;
+        // Process each element in the assigned part of the diagonal
+        for (uint64_t ind = start_index; ind < end_index; ++ind) {
+            uint64_t current_pos= ind*(N+1) + diag;
+            double result=0;
 
-                for(uint64_t i=0;i<diag;++i){
-                    result=result+( M[current_pos -i-1]* M[current_pos +((i+1)*N)] );
-                }
-                result=std::cbrt(result);
-                //M[current_pos]=result; //in teoria non dovrebbe servire, tanto dopo aggiorno tutta la (diagonale della) matrice
-
-                local_elements[ind] = result;
+            for(uint64_t i=0;i<diag;++i){
+                result=result+( M[current_pos -i-1]* M[current_pos +((i+1)*N)] );
             }
-        }
-        // Print befor the sum for each process
-        // std::cout << "Process " << rank << " global sum(PRIMA): ";
-        // for (double elem : local_elements) {
-        //     std::cout << elem << " ";
-        // }
-        // std::cout << std::endl;
-        // Perform the all-reduce operation, using the same vector for input and output
-        MPI_Allreduce(MPI_IN_PLACE, local_elements.data(), num_elements, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        // Print after the sum for each process
-        // std::cout << "Process " << rank << " global sum: ";
-        // for (double elem : local_elements) {
-        //     std::cout << elem << " ";
-        // }
-        // std::cout << std::endl;
+            result=std::cbrt(result);
+            //M[current_pos]=result; //in teoria non dovrebbe servire, tanto dopo aggiorno tutta la (diagonale della) matrice
 
-        // // Gather all the computed elements from all processes
-        // std::vector<double> all_gathered_elements(num_elements, 0);
-        // MPI_Allgather(local_elements.data(), elements_per_proc, MPI_DOUBLE,
-        //               all_gathered_elements.data(), elements_per_proc, MPI_DOUBLE, MPI_COMM_WORLD);
+            local_elements[local_index++] = result;
+
+
+        }
+
+        // Gather all the computed elements from all processes
+        std::vector<double> all_gathered_elements(elements_per_proc * size, 0);
+        MPI_Allgather(local_elements.data(), elements_per_proc, MPI_DOUBLE,
+                      all_gathered_elements.data(), elements_per_proc, MPI_DOUBLE, MPI_COMM_WORLD);
 
         // Each process updates its local matrix with the gathered results
         for (uint64_t ind = 0; ind < num_elements; ++ind) {
             uint64_t current_pos = ind*(N+1) + diag;
-            // M[current_pos] = all_gathered_elements[ind];
-            M[current_pos] = local_elements[ind];
+            M[current_pos] = all_gathered_elements[ind];
         }
     }
 
@@ -139,7 +127,7 @@ int main(int argc, char *argv[]) {
 
     if(rank==0){
 
-    #if 1 //stampa la matrice 
+    #if 0 //stampa la matrice 
         for(uint64_t i=0;i<N;++i){
             for(uint64_t j=0; j<N;++j){
                 std::printf("%f ",M[i*N+j]);
