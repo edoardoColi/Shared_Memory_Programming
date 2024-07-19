@@ -36,8 +36,8 @@ int main(int argc, char *argv[]) {
 
     auto init=[&]() {
         for(uint64_t i=0; i < N; i++) {    //For each element in the major diagonal
-            double t = (i+1.)/N;
-            M[i*N + i] = t;
+            double m = (i + 1.) / N;
+            M[i*N + i] = m;
         }
     };
     init();
