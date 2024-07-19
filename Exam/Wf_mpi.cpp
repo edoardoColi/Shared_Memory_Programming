@@ -42,9 +42,8 @@ int main(int argc, char *argv[]) {
     };
     init();
 
-
-    // //Start timer
-    // double start_time= MPI_Wtime();
+    double startGlobal, endGlobal;
+	startGlobal = MPI_Wtime();
 
     // // Iterate over each diagonal, starting with the (major diagonal +1)
     // for (uint64_t diag = 1; diag < N; ++diag) {
@@ -94,28 +93,25 @@ int main(int argc, char *argv[]) {
     //     }
     // }
 
-    // //End timer
-    // double end_time= MPI_Wtime();
-    // double elapsed_time= end_time - start_time;
+    endGlobal = MPI_Wtime();
+	double singleTime = endGlobal-startGlobal;
+	double avgTime;
+	MPI_Reduce(&singleTime, &avgTime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (mpiRank == 0) {
+		std::cout << (avgTime / mpiSize) << "s" <<  std::endl;
+    }
 
-    // if(rank==0){
-    //     std::printf("Computation time: %f seconds\n",elapsed_time);
-    // }
-
-
-
-
-    // if(rank==0){
-
-    // #if 0 //stampa la matrice 
-    //     for(uint64_t i=0;i<N;++i){
-    //         for(uint64_t j=0; j<N;++j){
-    //             std::printf("%f ",M[i*N+j]);
-    //         }
-    //     std::printf("\n");
-    //     }
-    // #endif
-    // }
+    #if 0   //Print matrix
+    if(rank==0){
+                std::printf("\n");
+                for(uint64_t i=0; i < N; i++){
+                    for(uint64_t j=0; j < N; j++){
+                        std::printf("%f ",M[i*N + j]);
+                    }
+                std::printf("\n");
+                }
+    }
+    #endif
 
     MPI_Finalize();
     return 0;

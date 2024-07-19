@@ -50,13 +50,13 @@ int main(int argc, char *argv[]) {
     TIMERSTOP(wavefront);
 
     #if 0   //Print matrix
-            std::printf("\n");
-            for(uint64_t i=0; i < N; i++){
-                for(uint64_t j=0; j < N; j++){
-                    std::printf("%f ",M[i*N + j]);
-                }
-            std::printf("\n");
-            }
+    std::printf("\n");
+    for(uint64_t i=0; i < N; i++){
+        for(uint64_t j=0; j < N; j++){
+            std::printf("%f ",M[i*N + j]);
+        }
+    std::printf("\n");
+    }
     #endif
 
     return 0;
