@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
 
     if (mpiRank == 0)
-        std::cout << "Sequential <MatrixSize>,<Workers>" << std::endl << "Wavefront(" << N << "," << mpiSize << ") --> ";
+        std::cout << "Distributed <MatrixSize>,<Workers>" << std::endl << "Wavefront(" << N << "," << mpiSize << ") --> ";
 
     std::vector<double> M(N*N, 0);  //Filled with 0
 
@@ -45,53 +45,36 @@ int main(int argc, char *argv[]) {
     double startGlobal, endGlobal;
 	startGlobal = MPI_Wtime();
 
-    // // Iterate over each diagonal, starting with the (major diagonal +1)
-    // for (uint64_t diag = 1; diag < N; ++diag) {
-    //     // Number of elements in the current diagonal
-    //     uint64_t num_elements = N - diag;
-
-    //     // Calculate the number of elements per process. Over estimation
-    //     uint64_t elements_per_proc = (num_elements + size -1 )/ size;
-
-    //     // Define the start and end indices for this process' range
-    //     uint64_t start_index = rank * elements_per_proc;
-    //     uint64_t end_index = std::min((rank + 1) * elements_per_proc, num_elements);
-
-    //     //std::cout << "DIAG " << diag << " Sono " << rank << " start " << start_index << " end " << end_index << " cioe quanti? " << elements_per_proc << std::endl;
 
 
 
-    //     // Create a local buffer for the elements that this process will compute
-    //     std::vector<double> local_elements(elements_per_proc, 0);
-    //     uint64_t local_index = 0;
 
-    //     // Process each element in the assigned part of the diagonal
-    //     for (uint64_t ind = start_index; ind < end_index; ++ind) {
-    //         uint64_t current_pos= ind*(N+1) + diag;
-    //         double result=0;
+    uint64_t diag_size = N - 1;
+    uint64_t threshold = N - mpiSize + 1;
+    for(uint64_t i=1; i < threshold; i++) {  //For each diagonal before the threshold
 
-    //         for(uint64_t i=0;i<diag;++i){
-    //             result=result+( M[current_pos -i-1]* M[current_pos +((i+1)*N)] );
-    //         }
-    //         result=std::cbrt(result);
-    //         //M[current_pos]=result; //in teoria non dovrebbe servire, tanto dopo aggiorno tutta la (diagonale della) matrice
+        uint64_t task_size = diag_size / mpiSize;
+        uint64_t remainder = diag_size % mpiSize;
 
-    //         local_elements[local_index++] = result;
+        uint64_t from = mpiRank * task_size + std::min(mpiRank, remainder);
+        uint64_t to = from + task_size + (mpiRank < remainder ? 1 : 0);
+
+        for(uint64_t j=from; j < to; j++) {  //For the elements of the diagonal
+            uint64_t vect_pos = (j * (N + 1)) + i;  //Absolute position
+
+            double dp = 0.0;
+            for(uint64_t k=0; k < i; k++) {
+                dp = dp + (M[vect_pos - k - 1] * M[vect_pos + ((k + 1) * N)]);
+            }
+            dp = std::cbrt(dp);
+            M[vect_pos] = dp;
+        }
+        diag_size--;
+    }
 
 
-    //     }
 
-    //     // Gather all the computed elements from all processes
-    //     std::vector<double> all_gathered_elements(elements_per_proc * size, 0);
-    //     MPI_Allgather(local_elements.data(), elements_per_proc, MPI_DOUBLE,
-    //                   all_gathered_elements.data(), elements_per_proc, MPI_DOUBLE, MPI_COMM_WORLD);
 
-    //     // Each process updates its local matrix with the gathered results
-    //     for (uint64_t ind = 0; ind < num_elements; ++ind) {
-    //         uint64_t current_pos = ind*(N+1) + diag;
-    //         M[current_pos] = all_gathered_elements[ind];
-    //     }
-    // }
 
     endGlobal = MPI_Wtime();
 	double singleTime = endGlobal-startGlobal;
@@ -101,7 +84,7 @@ int main(int argc, char *argv[]) {
 		std::cout << (avgTime / mpiSize) << "s" <<  std::endl;
     }
 
-    #if 0   //Print matrix
+    #if 1   //Print matrix
     if(rank==0){
                 std::printf("\n");
                 for(uint64_t i=0; i < N; i++){

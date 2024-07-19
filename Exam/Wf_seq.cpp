@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
 
             double dp = 0.0;
             for(uint64_t k=0; k < i; k++) {
-                dp = dp + (M[vect_pos - k - 1]* M[vect_pos + ((k + 1) * N)]);
+                dp = dp + (M[vect_pos - k - 1] * M[vect_pos + ((k + 1) * N)]);
             }
             dp = std::cbrt(dp);
             M[vect_pos] = dp;
