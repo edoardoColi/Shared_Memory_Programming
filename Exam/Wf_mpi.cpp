@@ -1,6 +1,6 @@
 /* Distributed code of the SPM project a.a. 23/24
 Compile using:
-mpicxx -std=c++20 -I. -Wall  -O3 -o wfm Wf_mpi.cpp 
+mpicxx -std=c++20 -I. -Wall -O3 -o wfm Wf_mpi.cpp 
 Run using:
 sbatch -N <value> laucher.sh
 */
@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
     init();
 
     double startGlobal, endGlobal;
-	startGlobal = MPI_Wtime();
+    startGlobal = MPI_Wtime();
 
     uint64_t diag_size = N - 1;
     uint64_t A = mpiSize;   //First n diagonals from the beginning
@@ -52,9 +52,9 @@ int main(int argc, char *argv[]) {
     uint64_t up_threshold = N - B;
 
     for(uint64_t i=1; i < low_threshold; i++) {
-        for(uint64_t j=0; j < diag_size; j++) {  //For each element in the diagonal
+        for(uint64_t j=0; j < diag_size; j++) {  //For each element in the diagonal before the threshold has computation in place
             uint64_t vect_pos = (j * (N + 1)) + i;  //Absolute position
-            double dp = 0.0;
+            double dp = 0.0;    //Dot product
 
             #pragma omp parallel for reduction(+:dp)
             for(uint64_t k=0; k < i; k++) {
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
     }
 
     diag_size = N - low_threshold;
-    for(uint64_t i=low_threshold; i < up_threshold; i++) { //For each diagonal before the threshold aka do first threshold diagonals
+    for(uint64_t i=low_threshold; i < up_threshold; i++) { //Each diagonal between the thresholds has distributed computation
 
         uint64_t task_size = (diag_size / mpiSize) + 1;
         std::vector<double> diag_values(task_size * mpiSize, 0);
@@ -89,13 +89,13 @@ int main(int argc, char *argv[]) {
         }
 
         MPI_Allgather(
-                        local_values.data(),    //
-                        task_size,              //
-                        MPI_DOUBLE,             //
-                        diag_values.data(),     //
-                        task_size,              //
-                        MPI_DOUBLE,             //
-                        MPI_COMM_WORLD          //
+                        local_values.data(),    // starting address of send buffer
+                        task_size,              // number of elements in send buffer
+                        MPI_DOUBLE,             // data type of send buffer elements
+                        diag_values.data(),     // address of receive buffer
+                        task_size,              // number of elements received from any process
+                        MPI_DOUBLE,             // data type of receive buffer elements
+                        MPI_COMM_WORLD          // communicator
                     );
 
         for(uint64_t j=0; j < diag_size; j++) {  //For each element in the diagonal
@@ -107,10 +107,10 @@ int main(int argc, char *argv[]) {
 
     if(mpiRank==0){
         uint64_t diag_size = N - up_threshold;
-        for(uint64_t i=up_threshold; i < N; i++) {  //For each diagonal after threshold
+        for(uint64_t i=up_threshold; i < N; i++) {  //Each diagonal after the threshold has computation is in place
             for(uint64_t j=0; j < diag_size; j++) {  //For each element in the diagonal
                 uint64_t vect_pos = (j * (N + 1)) + i;  //Absolute position
-                double dp = 0.0;
+                double dp = 0.0;    //Dot product
 
                 #pragma omp parallel for reduction(+:dp)
                 for(uint64_t k=0; k < i; k++) {
@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) {
 
     endGlobal = MPI_Wtime();
     if (mpiRank == 0) {
-		std::cout << (endGlobal-startGlobal) << "s" <<  std::endl;
+        std::cout << (endGlobal-startGlobal) << "s" <<  std::endl;
     }
 
     #if 0   //Print matrix
