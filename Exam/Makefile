@@ -27,3 +27,4 @@ cleanall: clean
 	-rm -fr *.out
 	-rm -fr $(TARGET)
 	
+# mpicxx -std=c++20 -I. -I./include -Wall -O3 -o wfm Wf_mpi.cpp -fopenmp

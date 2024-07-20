@@ -45,47 +45,71 @@ int main(int argc, char *argv[]) {
     double startGlobal, endGlobal;
 	startGlobal = MPI_Wtime();
 
-
-
-
-
     uint64_t diag_size = N - 1;
-    uint64_t threshold = N - mpiSize + 1;
-    for(uint64_t i=1; i < threshold; i++) {  //For each diagonal before the threshold
+    uint64_t threshold = N - (mpiSize - 1);
+    for(uint64_t i=1; i < threshold; i++) { //For each diagonal before the threshold aka do first threshold diagonals
 
-        uint64_t task_size = diag_size / mpiSize;
-        uint64_t remainder = diag_size % mpiSize;
+        uint64_t task_size = (diag_size / mpiSize) + 1;
+        std::vector<double> diag_values(task_size * mpiSize, 0);
+        std::vector<double> local_values(task_size, 0);
 
-        uint64_t from = mpiRank * task_size + std::min(mpiRank, remainder);
-        uint64_t to = from + task_size + (mpiRank < remainder ? 1 : 0);
-
-        for(uint64_t j=from; j < to; j++) {  //For the elements of the diagonal
+        uint64_t from = mpiRank * task_size;
+        uint64_t to = ((mpiRank + 1) * task_size < diag_size ? (mpiRank + 1) * task_size : diag_size);
+        for(uint64_t j=from; j < to; j++) {  //For the assigned elements of the diagonal
             uint64_t vect_pos = (j * (N + 1)) + i;  //Absolute position
+            double dp = 0.0;    //Dot product
 
-            double dp = 0.0;
+// #pragma omp parallel for reduction(+:dp)
             for(uint64_t k=0; k < i; k++) {
-                dp = dp + (M[vect_pos - k - 1] * M[vect_pos + ((k + 1) * N)]);
+                dp += (M[vect_pos - k - 1] * M[vect_pos + ((k + 1) * N)]);
             }
+
             dp = std::cbrt(dp);
-            M[vect_pos] = dp;
+            local_values[j-from] = dp;
+        }
+
+        MPI_Allgather(
+                        local_values.data(),    //
+                        task_size,              //
+                        MPI_DOUBLE,             //
+                        diag_values.data(),     //
+                        task_size,              //
+                        MPI_DOUBLE,             //
+                        MPI_COMM_WORLD          //
+                    );
+
+        for(uint64_t j=0; j < diag_size; j++) {  //For each element in the diagonal
+            uint64_t vect_pos = (j * (N + 1)) + i;  //Absolute position
+            M[vect_pos] = diag_values[j];
         }
         diag_size--;
     }
 
+    if(mpiRank==0){
+        uint64_t diag_size = N - threshold;
+        for(uint64_t i=threshold; i < N; i++) {  //For each diagonal after threshold
+            for(uint64_t j=0; j < diag_size; j++) {  //For each element in the diagonal
+                uint64_t vect_pos = (j * (N + 1)) + i;  //Absolute position
+                double dp = 0.0;
 
-
-
+// #pragma omp parallel for reduction(+:dp)
+                for(uint64_t k=0; k < i; k++) {
+                    dp += (M[vect_pos - k - 1] * M[vect_pos + ((k + 1) * N)]);
+                }
+                dp = std::cbrt(dp);
+                M[vect_pos] = dp;
+            }
+            diag_size--;
+        }
+    }
 
     endGlobal = MPI_Wtime();
-	double singleTime = endGlobal-startGlobal;
-	double avgTime;
-	MPI_Reduce(&singleTime, &avgTime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if (mpiRank == 0) {
-		std::cout << (avgTime / mpiSize) << "s" <<  std::endl;
+		std::cout << (endGlobal-startGlobal) << "s" <<  std::endl;
     }
 
     #if 1   //Print matrix
-    if(rank==0){
+    if(mpiRank==0){
                 std::printf("\n");
                 for(uint64_t i=0; i < N; i++){
                     for(uint64_t j=0; j < N; j++){
