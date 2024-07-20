@@ -46,8 +46,26 @@ int main(int argc, char *argv[]) {
 	startGlobal = MPI_Wtime();
 
     uint64_t diag_size = N - 1;
-    uint64_t threshold = N - (mpiSize - 1);
-    for(uint64_t i=1; i < threshold; i++) { //For each diagonal before the threshold aka do first threshold diagonals
+    uint64_t min_threshold = mpiSize;
+    uint64_t max_threshold = N - (mpiSize - 1);
+
+    for(uint64_t i=1; i < min_threshold; i++) {
+        for(uint64_t j=0; j < diag_size; j++) {  //For each element in the diagonal
+            uint64_t vect_pos = (j * (N + 1)) + i;  //Absolute position
+            double dp = 0.0;
+
+// #pragma omp parallel for reduction(+:dp)
+            for(uint64_t k=0; k < i; k++) {
+                dp += (M[vect_pos - k - 1] * M[vect_pos + ((k + 1) * N)]);
+            }
+            dp = std::cbrt(dp);
+            M[vect_pos] = dp;
+        }
+        diag_size--;
+    }
+
+    diag_size = N - min_threshold;
+    for(uint64_t i=min_threshold; i < max_threshold; i++) { //For each diagonal before the threshold aka do first threshold diagonals
 
         uint64_t task_size = (diag_size / mpiSize) + 1;
         std::vector<double> diag_values(task_size * mpiSize, 0);
@@ -59,7 +77,7 @@ int main(int argc, char *argv[]) {
             uint64_t vect_pos = (j * (N + 1)) + i;  //Absolute position
             double dp = 0.0;    //Dot product
 
-// #pragma omp parallel for reduction(+:dp)
+#pragma omp parallel for reduction(+:dp)
             for(uint64_t k=0; k < i; k++) {
                 dp += (M[vect_pos - k - 1] * M[vect_pos + ((k + 1) * N)]);
             }
@@ -86,13 +104,13 @@ int main(int argc, char *argv[]) {
     }
 
     if(mpiRank==0){
-        uint64_t diag_size = N - threshold;
-        for(uint64_t i=threshold; i < N; i++) {  //For each diagonal after threshold
+        uint64_t diag_size = N - max_threshold;
+        for(uint64_t i=max_threshold; i < N; i++) {  //For each diagonal after threshold
             for(uint64_t j=0; j < diag_size; j++) {  //For each element in the diagonal
                 uint64_t vect_pos = (j * (N + 1)) + i;  //Absolute position
                 double dp = 0.0;
 
-// #pragma omp parallel for reduction(+:dp)
+#pragma omp parallel for reduction(+:dp)
                 for(uint64_t k=0; k < i; k++) {
                     dp += (M[vect_pos - k - 1] * M[vect_pos + ((k + 1) * N)]);
                 }
@@ -108,7 +126,7 @@ int main(int argc, char *argv[]) {
 		std::cout << (endGlobal-startGlobal) << "s" <<  std::endl;
     }
 
-    #if 1   //Print matrix
+    #if 0   //Print matrix
     if(mpiRank==0){
                 std::printf("\n");
                 for(uint64_t i=0; i < N; i++){
