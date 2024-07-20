@@ -1,6 +1,6 @@
 /* Sequential code of the SPM project a.a. 23/24
 Compile using:
-g++ -std=c++20 -O3 -march=native -I. Wf_seq.cpp -o wfs
+g++ -std=c++20 -O3 -march=native -I. -o wfs Wf_seq.cpp
 */
 
 #include <iostream>
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
     }
     TIMERSTOP(wavefront);
 
-    #if 0   //Print matrix
+    #if 1   //Print matrix
     std::printf("\n");
     for(uint64_t i=0; i < N; i++){
         for(uint64_t j=0; j < N; j++){
