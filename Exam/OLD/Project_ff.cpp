@@ -38,6 +38,7 @@ struct Position {
 struct Worker: ff_node_t<Position, int> {
     Worker(std::vector<double> &M) : M(M) {}
 
+//quando gli arriva un messaggio fa il dotprod e ritorna uno per far contare the ha finio
     int *svc(Position *pos) { // Process the task
 
         uint64_t diag= pos->diagonal;
@@ -79,7 +80,7 @@ struct Source: ff_monode_t<int, Position> {
     Source(uint64_t num_workers, uint64_t max_batches) : num_workers(num_workers), max_batches(max_batches) {}
 
     uint64_t N= max_batches;
-
+//questa cosa parte ogni volta che ricevo qualcosa
     Position *svc(int *task) { // Handle the result from the worker
 
         if(task != nullptr){ //TODO non so perche altrimenti non funziona, comunque ci sta
