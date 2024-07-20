@@ -19,7 +19,7 @@ $(FF_EXE): $(FF_SRC)
 
 #can also compile adding "-fopenmp"
 $(MPI_EXE): $(MPI_SRC)
-	mpicxx -std=c++20 -I. -Wall  -O3 -o $@ $^
+	mpicxx -std=c++20 -I. -Wall -O3 -o $@ $^
 
 clean:
 	rm -fr *.o *~ *.err

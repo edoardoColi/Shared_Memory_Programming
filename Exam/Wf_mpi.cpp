@@ -46,8 +46,10 @@ int main(int argc, char *argv[]) {
 	startGlobal = MPI_Wtime();
 
     uint64_t diag_size = N - 1;
-    uint64_t low_threshold = mpiSize;
-    uint64_t up_threshold = N - (mpiSize - 1);
+    uint64_t A = mpiSize;   //First n diagonals from the beginning
+    uint64_t B = mpiSize - 1;  //Last n diagonals from the end
+    uint64_t low_threshold = A;
+    uint64_t up_threshold = N - B;
 
     for(uint64_t i=1; i < low_threshold; i++) {
         for(uint64_t j=0; j < diag_size; j++) {  //For each element in the diagonal
@@ -126,7 +128,7 @@ int main(int argc, char *argv[]) {
 		std::cout << (endGlobal-startGlobal) << "s" <<  std::endl;
     }
 
-    #if 1   //Print matrix
+    #if 0   //Print matrix
     if(mpiRank==0){
                 std::printf("\n");
                 for(uint64_t i=0; i < N; i++){
