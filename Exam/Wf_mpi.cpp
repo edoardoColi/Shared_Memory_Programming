@@ -7,8 +7,8 @@ sbatch -N <value> laucher.sh
 
 #include <mpi.h>
 #include <iostream>
-#include <cmath>
 #include <vector>
+#include <cmath>
 
 int main(int argc, char *argv[]) {
 
