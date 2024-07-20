@@ -14,7 +14,7 @@ using namespace ff;
 
 struct Task_t {
     Task_t(uint64_t d, uint64_t f, uint64_t t): diagonal(d), from_elem(f), to_elem(t), completed(false) {
-        std::cout << "I'm task with diag=" << d << " from=" << f << " to=" << t << std::endl;
+        // std::cout << "I'm task with diag=" << d << " from=" << f << " to=" << t << std::endl;
     }
     const uint64_t diagonal;
     const uint64_t from_elem;
