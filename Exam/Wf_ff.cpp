@@ -13,7 +13,9 @@ g++ -std=c++20 -I. -I /home/e.coli3/fastflow -Wall -O3 -DNDEBUG -ffast-math -o w
 using namespace ff;
 
 struct Task_t {
-    Task_t(uint64_t d, uint64_t f, uint64_t t): diagonal(d), from_elem(f), to_elem(t), completed(false) {}
+    Task_t(uint64_t d, uint64_t f, uint64_t t): diagonal(d), from_elem(f), to_elem(t), completed(false) {
+        std::cout << "I'm task with diag=" << d << " from=" << f << " to=" << t << std::endl;
+    }
     const uint64_t diagonal;
     const uint64_t from_elem;
     const uint64_t to_elem;
@@ -21,7 +23,7 @@ struct Task_t {
 };
 
 struct Emitter: ff_monode_t<Task_t> {
-    Emitter(uint64_t sizeMatrix) : sizeM(sizeMatrix) {}
+    Emitter(uint64_t sizeMatrix, uint64_t workers) : sizeM(sizeMatrix), Nw(workers) {}
 
     Task_t *svc(Task_t *in) {
         if (in != nullptr) { //Not first call
@@ -31,7 +33,6 @@ struct Emitter: ff_monode_t<Task_t> {
                 ff_send_out(in);
             }
         }
-
         if (send == done) {
             send = 0;
             done = 0;
@@ -41,12 +42,11 @@ struct Emitter: ff_monode_t<Task_t> {
                 uint64_t diag_size = sizeM - diag;
                 uint64_t from = 0; //mpiRank * task_size;
                 uint64_t to = diag_size; //((mpiRank + 1) * task_size < diag_size ? (mpiRank + 1) * task_size : diag_size);
-                Task_t *task = new Task_t(diag, from, to);
+                Task_t *task = new Task_t(diag, from, to);  //The variable 'to' must be in (0,diag_size]
                 send++;
                 ff_send_out(task);
             } else {
                 broadcast_task(EOS);
-                return EOS; //TODO sicuro non GO_ON
             }
         }
         if (in != nullptr)
@@ -55,11 +55,11 @@ struct Emitter: ff_monode_t<Task_t> {
     }
 
     uint64_t sizeM;
-    const uint64_t nw = get_num_outchannels(); //Gets the total number of workers added to the farm;
+    uint64_t Nw;
     uint64_t send = 0;
     uint64_t done = 0;
     uint64_t diag = 0;
-}
+};
 
 struct Worker: ff_node_t<Task_t> {
     Worker(std::vector<double> &M, uint64_t sizeMatrix) : M(M), sizeM(sizeMatrix) {}
@@ -71,11 +71,11 @@ struct Worker: ff_node_t<Task_t> {
         uint64_t to = in->to_elem;
 
         for(uint64_t j=from; j < to; j++) {  //For the assigned elements of the diagonal
-            uint64_t vect_pos = (j * (N + 1)) + i;  //Absolute position
+            uint64_t vect_pos = (j * (sizeM + 1)) + i;  //Absolute position
             double dp = 0.0;    //Dot product
 
             for(uint64_t k=0; k < i; k++) {
-                dp += (M[vect_pos - k - 1] * M[vect_pos + ((k + 1) * N)]);
+                dp += (M[vect_pos - k - 1] * M[vect_pos + ((k + 1) * sizeM)]);
             }
 
             dp = std::cbrt(dp);
@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
 
     auto init=[&]() {
         for(uint64_t i=0; i < N; i++) {    //For each element in the major diagonal
-            double m = (i + 1.);// / N;
+            double m = (i + 1.) / N;
             M[i*N + i] = m;
         }
     };
@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) {
         return W;
     } () );
     
-    Emitter E(N);               //Creating the Emitter
+    Emitter E(N, Nw);           //Creating the Emitter
     farm.add_emitter(E);        //Replacing the default emitter
     farm.remove_collector();    //Removing the default collector
     farm.wrap_around();         //Adding feedback channels between Workers and the Emitter
