@@ -32,7 +32,9 @@ struct Emitter: ff_monode_t<Task_t> {
             } else {
                 ff_send_out(in);
             }
+            delete in;
         }
+
         if (send == done) {
             send = 0;
             done = 0;
@@ -40,17 +42,22 @@ struct Emitter: ff_monode_t<Task_t> {
 
             if (diag < sizeM){
                 uint64_t diag_size = sizeM - diag;
-                uint64_t from = 0; //mpiRank * task_size;
-                uint64_t to = diag_size; //((mpiRank + 1) * task_size < diag_size ? (mpiRank + 1) * task_size : diag_size);
-                Task_t *task = new Task_t(diag, from, to);  //The variable 'to' must be in (0,diag_size]
-                send++;
-                ff_send_out(task);
+                uint64_t task_size = diag_size / Nw;
+                uint64_t remainder = diag_size % Nw;
+                                
+                for (uint64_t i=0 ; i < Nw; i++){
+                    uint64_t from = i * task_size + std::min(i, remainder);
+                    uint64_t to = from + task_size + (i < remainder ? 1 : 0);
+                    if (from == to) break;
+
+                    Task_t *task = new Task_t(diag, from, to);  //The variable 'to' must be in (0,diag_size]
+                    send++;
+                    ff_send_out(task);
+                }
             } else {
                 broadcast_task(EOS);
             }
         }
-        if (in != nullptr)
-            delete in;
         return GO_ON;   //Keep me alive 
     }
 
@@ -120,7 +127,7 @@ int main(int argc, char *argv[]) {
     ffTime(START_TIME);
     ff_Farm<> farm([&]() {
         std::vector<std::unique_ptr<ff_node> > W;
-        for(size_t i=0;i<(Nw);++i)
+        for(uint64_t i=0;i<(Nw);++i)
             W.push_back(make_unique<Worker>(M,N));
         return W;
     } () );
@@ -137,7 +144,7 @@ int main(int argc, char *argv[]) {
     ffTime(STOP_TIME);
     std::cout << ffTime(GET_TIME)/1000 << "s" << std::endl;
 
-    #if 1   //Print matrix
+    #if 0   //Print matrix
     std::printf("\n");
     for(uint64_t i=0; i < N; i++){
         for(uint64_t j=0; j < N; j++){
