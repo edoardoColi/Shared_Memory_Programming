@@ -25,9 +25,9 @@
 echo "Program executed on: $SLURM_JOB_NODELIST"
 
 # srun --mpi=pmix wfm 4
-mpirun --report-bindings wfm 4
-mpirun --report-bindings wfm 512
-mpirun --report-bindings wfm 1024
+# mpirun --report-bindings wfm 4
+# mpirun --report-bindings wfm 512
+# mpirun --report-bindings wfm 1024
 # mpirun --report-bindings wfm 2048
 # mpirun --report-bindings wfm 4096
 # mpirun --report-bindings wfm 10000
