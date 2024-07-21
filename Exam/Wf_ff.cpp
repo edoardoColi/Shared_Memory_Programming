@@ -42,9 +42,10 @@ struct Emitter: ff_monode_t<Task_t> {
 
             if (diag < sizeM){
                 uint64_t diag_size = sizeM - diag;
+
+                // This is the schedule for schedule(static)
                 uint64_t task_size = diag_size / Nw;
-                uint64_t remainder = diag_size % Nw;
-                                
+                uint64_t remainder = diag_size % Nw;                                
                 for (uint64_t i=0 ; i < Nw; i++){
                     uint64_t from = i * task_size + std::min(i, remainder);
                     uint64_t to = from + task_size + (i < remainder ? 1 : 0);
@@ -52,8 +53,22 @@ struct Emitter: ff_monode_t<Task_t> {
 
                     Task_t *task = new Task_t(diag, from, to);  //The variable 'to' must be in (0,diag_size]
                     send++;
-                    ff_send_out(task);
+                    // ff_send_out(task);
+                    ff_send_out_to(task, i);
                 }
+                // // This is the schedule for schedule(static,task_size) aka block-cyclic with c=task_size
+                // uint64_t task_size = 10;
+                // for (uint64_t i=0 ; i < diag_size; i++){
+                //     uint64_t from = std::min(i * task_size,diag_size);
+                //     uint64_t to = std::min(from + task_size,diag_size);
+                //     if (from == to) break;
+
+                //     Task_t *task = new Task_t(diag, from, to);  //The variable 'from' and 'to' must be in (0,diag_size]
+                //     send++;
+                //     // ff_send_out(task);
+                //     ff_send_out_to(task, i % Nw);
+                // }
+
             } else {
                 broadcast_task(EOS);
             }
@@ -136,7 +151,8 @@ int main(int argc, char *argv[]) {
     farm.add_emitter(E);        //Replacing the default emitter
     farm.remove_collector();    //Removing the default collector
     farm.wrap_around();         //Adding feedback channels between Workers and the Emitter
-    
+    // farm.set_scheduling_ondemand();  //On-demand scheduling
+
     if (farm.run_and_wait_end() < 0) {
         error("running farm\n");
         return -1;
