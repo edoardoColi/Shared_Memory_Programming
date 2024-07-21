@@ -43,7 +43,7 @@ struct Emitter: ff_monode_t<Task_t> {
             if (diag < sizeM){
                 uint64_t diag_size = sizeM - diag;
 
-                // This is the schedule for schedule(static)
+                // This is the schedule loop for schedule(static)
                 uint64_t task_size = diag_size / Nw;
                 uint64_t remainder = diag_size % Nw;                                
                 for (uint64_t i=0 ; i < Nw; i++){
@@ -56,7 +56,7 @@ struct Emitter: ff_monode_t<Task_t> {
                     // ff_send_out(task);
                     ff_send_out_to(task, i);
                 }
-                // // This is the schedule for schedule(static,task_size) aka block-cyclic with c=task_size
+                // // This is the schedule loop for schedule(static,task_size) aka block-cyclic with c=task_size
                 // uint64_t task_size = 10;
                 // for (uint64_t i=0 ; i < diag_size; i++){
                 //     uint64_t from = std::min(i * task_size,diag_size);
