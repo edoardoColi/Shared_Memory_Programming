@@ -1,3 +1,6 @@
+#FastFlow Lib
+FF_LIB = /home/e.coli3/fastflow
+
 #Source files
 FF_SRC = Wf_ff.cpp
 MPI_SRC = Wf_mpi.cpp
@@ -15,7 +18,7 @@ $(SEQ_EXE): $(SEQ_SRC)
 	g++ -std=c++20 -O3 -march=native -I. -o $@ $^
 
 $(FF_EXE): $(FF_SRC)
-	g++ -std=c++20 -I. -I /home/e.coli3/fastflow -Wall -O3 -DNDEBUG -ffast-math -o $@ $^ -pthread
+	g++ -std=c++20 -I. -I $(FF_LIB) -Wall -O3 -DNDEBUG -ffast-math -o $@ $^ -pthread
 
 #can also compile adding "-fopenmp"
 $(MPI_EXE): $(MPI_SRC)
